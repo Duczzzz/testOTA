@@ -27,7 +27,16 @@ jobs:
 
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
-
+      - name: Install Libraries
+        run: |
+          arduino-cli lib update-index
+      
+          arduino-cli lib install "Adafruit Unified Sensor"
+          arduino-cli lib install "Adafruit BME280 Library"
+          arduino-cli lib install "Firebase ESP32 Client"
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "Adafruit GFX Library"
+          arduino-cli lib install "Adafruit SSD1306"
       - name: Compile
         run: |
           mkdir build
@@ -35,7 +44,7 @@ jobs:
           arduino-cli compile \
           --fqbn esp32:esp32:esp32s3:FlashSize=16M \
           --output-dir build \
-          Source_testBoard/Source_testBoard.ino
+          bme280_ssd1306_boardLuong/bme280_ssd1306_boardLuong.ino
 
       - name: Copy BIN
         run: |
