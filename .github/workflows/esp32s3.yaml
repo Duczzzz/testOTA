@@ -1,0 +1,52 @@
+name: ESP32-S3 Build ver2
+permissions:
+  contents: write
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          sudo mv bin/arduino-cli /usr/local/bin/
+
+      - name: Install ESP32 Core
+        run: |
+          arduino-cli config init
+
+          arduino-cli config add board_manager.additional_urls \
+          https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Compile
+        run: |
+          mkdir build
+
+          arduino-cli compile \
+          --fqbn esp32:esp32:esp32s3:FlashSize=16M \
+          --output-dir build \
+          Source_testBoard/Source_testBoard.ino
+
+      - name: Copy BIN
+        run: |
+          cp build/*.ino.bin firmware.bin
+
+      - name: Commit BIN
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git add firmware.bin
+          git commit -m "update firmware bin" || echo "No changes"
+
+          git push
