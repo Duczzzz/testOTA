@@ -48,7 +48,7 @@ jobs:
 
       - name: Copy BIN
         run: |
-          cp build/*.ino.bin firmware.bin
+          cp build/*.ino.bin firmware.ino.bin
 
       - name: Commit BIN
         run: |
