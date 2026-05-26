@@ -48,33 +48,14 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-//----- Định nghĩa màu và tên -------------------------------------------------
-typedef struct {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-  const char* name;
-} ColorInfo;
-
-ColorInfo colors[] = {
-  {255,   0,   0, "DO"},
-  {0,   255,   0, "XANH"},
-  {0,     0, 255, "XANH DUONG"},
-  {255, 255,   0, "VANG"},
-  {0,   255, 255, "XANH LA"},
-  {255,   0, 255, "HOA TIEU"},
-  {255, 255, 255, "TRANG"},
-  {0,     0,   0, "DEN"}
-};
-
-const uint8_t COLOR_COUNT = sizeof(colors) / sizeof(ColorInfo);
-uint8_t currentColorIndex = 0;
-unsigned long lastChangeTime = 0;
-const unsigned long CHANGE_INTERVAL = 2000; // 2 giây
-//-----------------------------------------------------------------------------
+// biến cho việc nhấp nháy LED
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000; // 2 giây
+bool ledState = false;
 
 void getupdate()
 {
+    Firebase.setInt(fbdo, "/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -142,38 +123,13 @@ void getupdate()
     http.end();
 }
 
-void displayCurrentColor()
-{
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print("Mau hien tai:");
-    display.setCursor(0, 12);
-    display.print(colors[currentColorIndex].name);
-    display.display();
-}
-
-void setLedToCurrentColor()
-{
-    led.setPixelColor(0, led.Color(colors[currentColorIndex].r,
-                                  colors[currentColorIndex].g,
-                                  colors[currentColorIndex].b));
-    led.show();
-}
-
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
+  // Người dùng build code tại đây
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
-  // Khởi tạo màu đầu tiên
-  currentColorIndex = 0;
-  setLedToCurrentColor();
-  displayCurrentColor();
-
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -231,6 +187,14 @@ void setup() {
   display.clearDisplay();
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
+
+  // Khởi tạo trạng thái LED và hiển thị lần đầu
+  ledState = false;
+  digitalWrite(LED, ledState);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
 }
 
 void loop() {
@@ -243,14 +207,19 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  unsigned long now = millis();
-  if (now - lastChangeTime >= CHANGE_INTERVAL) {
-    lastChangeTime = now;
-    currentColorIndex = (currentColorIndex + 1) % COLOR_COUNT;
-    setLedToCurrentColor();
-    displayCurrentColor();
+  // Xây dựng cơ chế xử lý của bạn tại đây
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    if (ledState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
+    display.display();
   }
 }
