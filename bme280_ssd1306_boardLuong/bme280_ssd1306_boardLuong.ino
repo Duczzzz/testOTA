@@ -48,7 +48,30 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-//--- OTA function (giữ nguyên) ---
+//--- Định nghĩa màu và tên màu cho LED RGB ---
+uint32_t rgbColors[] = {
+  0xFF0000, // Red
+  0x00FF00, // Green
+  0x0000FF, // Blue
+  0xFFFF00, // Yellow
+  0x00FFFF, // Cyan
+  0xFF00FF, // Magenta
+  0xFFFFFF  // White
+};
+const char* rgbNames[] = {
+  "Red",
+  "Green",
+  "Blue",
+  "Yellow",
+  "Cyan",
+  "Magenta",
+  "White"
+};
+const int rgbColorCount = sizeof(rgbColors) / sizeof(rgbColors[0]);
+int currentColorIdx = 0;
+unsigned long lastChangeTime = 0;
+const unsigned long colorInterval = 2000; // 2 giây
+
 void getupdate()
 {
     Serial.print("Firmware URL: ");
@@ -118,41 +141,16 @@ void getupdate()
     http.end();
 }
 
-//--- Biến cho việc đổi màu LED ---
-const uint32_t colors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00, // Yellow
-  0xFF00FF, // Magenta
-  0x00FFFF, // Cyan
-  0xFFFFFF  // White
-};
-const char* colorNames[] = {
-  "Red",
-  "Green",
-  "Blue",
-  "Yellow",
-  "Magenta",
-  "Cyan",
-  "White"
-};
-const int colorCount = sizeof(colors) / sizeof(colors[0]);
-int currentColorIndex = 0;
-unsigned long lastChangeTime = 0;
-const unsigned long changeInterval = 2000; // 2 giây
-
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
+  // Người dùng build code tại đây
+  // Khởi tạo I2C, LED và OLED đã có ở trên, chỉ cần thiết lập màu ban đầu và hiển thị
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
-  // Khởi tạo màu đầu tiên
-  led.setPixelColor(0, colors[currentColorIndex]);
+  // Đặt màu ban đầu
+  led.setPixelColor(0, rgbColors[currentColorIdx]);
   led.show();
-
+  // Khởi tạo OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -163,33 +161,22 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang \nkhoi dong...");
+  display.print("Mau hien tai: ");
+  display.println(rgbNames[currentColorIdx]);
   display.display();
-  delay(1000);
+
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
+
   WiFi.begin(ssid,pass);
-  int demwf = 0;
   while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();
     Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
     display.print("Conecting WiFi");
-    if(demwf < 80) {
-      display.setCursor(demwf,10);
-      display.print(".");
-      Serial.println(".");
-    }
-    else if(demwf > 80) {
-      display.clearDisplay();
-      demwf = 0;
-    }
-    demwf+=5;
     display.display();
     digitalWrite(LED,1);
     delay(300);
@@ -201,23 +188,8 @@ void setup() {
   Firebase.reconnectWiFi(true);
   fbdo.setBSSLBufferSize(512, 512);
   Firebase.begin(&config, &auth);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 30);
-  display.println("XIN CHAO CAC BAN");
-  display.display();
-  delay(300);
-  display.clearDisplay();
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
-
-  // Hiển thị màu hiện tại lần đầu
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.print("Mau LED: ");
-  display.println(colorNames[currentColorIndex]);
-  display.display();
 }
 
 void loop() {
@@ -230,23 +202,23 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
+
+  // Xây dựng cơ chế xử lý của bạn tại đây
   unsigned long now = millis();
-  if (now - lastChangeTime >= changeInterval) {
+  if (now - lastChangeTime >= colorInterval) {
     lastChangeTime = now;
     // Chuyển sang màu tiếp theo
-    currentColorIndex = (currentColorIndex + 1) % colorCount;
-    led.setPixelColor(0, colors[currentColorIndex]);
+    currentColorIdx = (currentColorIdx + 1) % rgbColorCount;
+    led.setPixelColor(0, rgbColors[currentColorIdx]);
     led.show();
-
     // Cập nhật OLED
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("Mau LED: ");
-    display.println(colorNames[currentColorIndex]);
+    display.print("Mau hien tai: ");
+    display.println(rgbNames[currentColorIdx]);
     display.display();
   }
+  // Thêm một delay ngắn để giảm tải CPU
+  delay(10);
 }
