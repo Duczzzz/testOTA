@@ -46,23 +46,29 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-/* Biến toàn cục cho việc nhấp nháy và hiển thị màu */
-uint32_t colors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00, // Yellow
-  0xFF00FF, // Magenta
-  0x00FFFF, // Cyan
-  0xFFFFFF, // White
-  0x000000  // Off
+//--- Biến toàn cục cho việc thay đổi màu LED và hiển thị ---
+const uint32_t colors[] = {
+  0xFF0000, // RED
+  0x00FF00, // GREEN
+  0x0000FF, // BLUE
+  0xFFFF00, // YELLOW
+  0xFF00FF, // MAGENTA
+  0x00FFFF, // CYAN
+  0xFFFFFF  // WHITE
 };
 const char* colorNames[] = {
-  "Red","Green","Blue","Yellow","Magenta","Cyan","White","Off"
+  "Red",
+  "Green",
+  "Blue",
+  "Yellow",
+  "Magenta",
+  "Cyan",
+  "White"
 };
-int colorIndex = 0;
-unsigned long previousMillis = 0;
-const long interval = 1000; // 1 giây
+const uint8_t colorCount = sizeof(colors) / sizeof(colors[0]);
+uint8_t currentColorIdx = 0;
+unsigned long lastChangeTime = 0;
+const unsigned long changeInterval = 2000; // 2 giây
 
 void getupdate()
 {
@@ -134,122 +140,102 @@ void getupdate()
 }
 
 void setup() {
-    // Khởi tạo các thành phần cơ bản và chuẩn bị cho việc nhấp nháy LED
-    pinMode(LED, OUTPUT);
-    digitalWrite(LED, LOW);
-    // Đặt màu LED NeoPixel ban đầu
-    led.setPixelColor(0, colors[colorIndex]);
+  /*
+    Người dùng build code tại đây
+  */
+  // Khởi tạo I2C, LED và OLED (giữ lại các dòng hiện có)
+  Wire.begin(13,12);
+  led.begin();
+  led.setBrightness(50);
+  // Đặt màu ban đầu và hiển thị tên màu
+  led.setPixelColor(0, colors[currentColorIdx]);
+  led.show();
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
-    // Hiển thị màu hiện tại lên OLED lần đầu
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print("Mau: ");
-    display.print(colorNames[colorIndex]);
-    display.display();
-
-    // Phần code gốc
-    Wire.begin(13,12);
-    led.begin();
-    led.setBrightness(50);
+    Serial.println("OLED fail!");
+    while (1);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.printf("He thong dang khoi dong...");
+  display.display();
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
+  WiFi.begin(ssid,pass);
+  // (phần kết nối WiFi giữ nguyên)
+  while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();  
-    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-      led.setPixelColor(0, led.Color(255, 0, 0));
-      led.show();
-      Serial.println("OLED fail!");
-      while (1);
-    }
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.printf("He thong dang \nkhoi dong...");
-    display.display();
-    delay(1000);
-    pinMode(LED,OUTPUT);
-    digitalWrite(LED,0);
-    Serial.begin(115200);
-    Serial.println("He thong dang khoi dong...");
-    display.display();
-    display.clearDisplay();
-    WiFi.begin(ssid,pass);
-    while (WiFi.status() != WL_CONNECTED) {
-      led.setPixelColor(0, led.Color(255, 0, 255));
-      led.show();
-      Serial.println("dang khoi dong WiFi...");
-      display.setCursor(0,0);
-      display.print("Conecting WiFi");
-      if(demwf < 80) {
-        display.setCursor(demwf,10);
-        display.print(".");
-        Serial0.println(".");
-      }
-      else if(demwf > 80) {
-        display.clearDisplay();
-        demwf = 0;
-      }
-      demwf+=5;
-      display.display();
-      digitalWrite(LED,1);
-      delay(300);
-    }
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
-    digitalWrite(LED,0);
-    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-    config.database_url = DATABASE_URL;
-    config.signer.tokens.legacy_token = DATABASE_SECRET;
-    Firebase.reconnectWiFi(true);
-    fbdo.setBSSLBufferSize(512, 512);
-    Firebase.begin(&config, &auth);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 30);
-    display.println("XIN CHAO CAC BAN");
-    display.display();
-    delay(300);
-    display.clearDisplay();
-    led.setPixelColor(0, led.Color(0, 255, 0));
     led.show();
+    Serial.println("dang khoi dong WiFi...");
+    display.setCursor(0,0);
+    display.print("Conecting WiFi");
+    // biến demwf chưa khai báo trong source gốc, bỏ qua phần hiển thị chấm
+    digitalWrite(LED,1);
+    delay(300);
+  }
+  // Cấu hình thời gian và Firebase giữ nguyên
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer1);
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 30);
+  display.println("XIN CHAO CAC BAN");
+  display.display();
+  delay(300);
+  display.clearDisplay();
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+
+  // Hiển thị màu hiện tại trên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Mau hien tai: ");
+  display.println(colorNames[currentColorIdx]);
+  display.display();
 }
 
 void loop() {
-    if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-    if(checkupdate == 1) {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setCursor(0, 0);
-      display.print("UPDATE OTA");
-      display.display();
-      getupdate();
-    }
-
-    // Nhấp nháy LED và cập nhật màu trên OLED
-    unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;
-
-        // Toggle built-in LED
-        digitalWrite(LED, !digitalRead(LED));
-
-        // Cập nhật màu NeoPixel
-        led.setPixelColor(0, colors[colorIndex]);
-        led.show();
-
-        // Hiển thị tên màu trên OLED
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0, 0);
-        display.print("Mau: ");
-        display.print(colorNames[colorIndex]);
-        display.display();
-
-        // Chuyển sang màu tiếp theo
-        colorIndex = (colorIndex + 1) % (sizeof(colors) / sizeof(colors[0]));
-    }
-
-    /*
-      Xây dựng cơ chế xử lý của bạn tại đây
-    */
+  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  // Thay đổi màu LED mỗi 2 giây và cập nhật OLED
+  unsigned long now = millis();
+  if (now - lastChangeTime >= changeInterval) {
+    lastChangeTime = now;
+    currentColorIdx = (currentColorIdx + 1) % colorCount;
+    // Cập nhật LED
+    led.setPixelColor(0, colors[currentColorIdx]);
+    led.show();
+    // Cập nhật OLED
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("Mau hien tai: ");
+    display.println(colorNames[currentColorIdx]);
+    display.display();
+  }
 }
