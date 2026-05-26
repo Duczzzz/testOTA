@@ -20,6 +20,8 @@
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <HTTPClient.h>
+#include <Update.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -46,25 +48,24 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-//--- Định nghĩa màu và tên màu cho LED RGB ---
-const uint32_t colors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00, // Yellow
-  0xFF00FF, // Magenta
-  0x00FFFF, // Cyan
-  0xFFFFFF, // White
-  0x000000  // Off
+struct LedColor {
+  uint32_t color;
+  const char* name;
 };
-const char* colorNames[] = {
-  "Red","Green","Blue","Yellow","Magenta","Cyan","White","Off"
+
+LedColor colors[] = {
+  {0xFF0000, "Red"},
+  {0x00FF00, "Green"},
+  {0x0000FF, "Blue"},
+  {0xFFFF00, "Yellow"},
+  {0xFF00FF, "Magenta"},
+  {0x00FFFF, "Cyan"},
+  {0xFFFFFF, "White"},
+  {0x000000, "Off"}
 };
-const int colorCount = sizeof(colors) / sizeof(colors[0]);
-int currentColorIdx = 0;
+int colorIndex = 0;
 unsigned long lastChange = 0;
-const unsigned long intervalMs = 2000;
-//--------------------------------------------
+const unsigned long changeInterval = 2000; // 2 seconds
 
 void getupdate()
 {
@@ -136,18 +137,17 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
-  // Khởi tạo các biến màu đã được khai báo ở trên
-  currentColorIdx = 0;
-  lastChange = millis();
-  // Các khởi tạo phần cứng gốc
+  // Khởi tạo I2C, LED và OLED
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, colors[currentColorIdx]);
-  led.show();  
+  // Đặt màu LED ban đầu và hiển thị trên OLED
+  uint32_t c = colors[colorIndex].color;
+  uint8_t r = (c >> 16) & 0xFF;
+  uint8_t g = (c >> 8) & 0xFF;
+  uint8_t b = c & 0xFF;
+  led.setPixelColor(0, led.Color(r,g,b));
+  led.show();
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -174,8 +174,11 @@ void setup() {
     Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
     display.print("Conecting WiFi");
-    delay(300);
+    // Đơn giản bỏ phần demwf vì chưa khai báo, chỉ hiển thị dấu chấm
+    display.print(".");
+    display.display();
     digitalWrite(LED,1);
+    delay(300);
   }
   digitalWrite(LED,0);
   Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
@@ -191,8 +194,16 @@ void setup() {
   display.display();
   delay(300);
   display.clearDisplay();
-  led.setPixelColor(0, colors[currentColorIdx]);
+  led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
+
+  // Hiển thị màu hiện tại trên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Mau LED: ");
+  display.print(colors[colorIndex].name);
+  display.display();
 }
 
 void loop() {
@@ -205,25 +216,23 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  // Thay đổi màu LED mỗi intervalMs và hiển thị tên màu lên OLED
-  unsigned long now = millis();
-  if (now - lastChange >= intervalMs) {
-    // Cập nhật chỉ mục màu
-    currentColorIdx = (currentColorIdx + 1) % colorCount;
-    // Đặt màu cho LED
-    led.setPixelColor(0, colors[currentColorIdx]);
+
+  // Đổi màu LED mỗi interval và cập nhật OLED
+  if (millis() - lastChange >= changeInterval) {
+    lastChange = millis();
+    colorIndex = (colorIndex + 1) % (sizeof(colors) / sizeof(colors[0]));
+    uint32_t c = colors[colorIndex].color;
+    uint8_t r = (c >> 16) & 0xFF;
+    uint8_t g = (c >> 8) & 0xFF;
+    uint8_t b = c & 0xFF;
+    led.setPixelColor(0, led.Color(r,g,b));
     led.show();
-    // Hiển thị màu hiện tại lên OLED
     display.clearDisplay();
     display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("Mau: ");
-    display.println(colorNames[currentColorIdx]);
+    display.setCursor(0,0);
+    display.print("Mau LED: ");
+    display.print(colors[colorIndex].name);
     display.display();
-    // Cập nhật thời gian
-    lastChange = now;
   }
+  // Thêm các xử lý khác của người dùng tại đây
 }
