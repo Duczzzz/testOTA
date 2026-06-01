@@ -4,7 +4,6 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện Adafruit BME280 by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB được cấu hình chân DIN ở GPIO9
@@ -23,7 +22,6 @@
 #include <Adafruit_SSD1306.h>
 #include <HTTPClient.h>
 #include <Update.h>
-#include <Adafruit_BME280.h>
 #include <Adafruit_Sensor.h>
 
 const char* ssid = "DUC";
@@ -50,9 +48,25 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-int demwf = 0;
 
-Adafruit_BME280 bme; // I2C
+struct ColorInfo {
+  uint32_t color;
+  const char* name;
+};
+
+ColorInfo colors[] = {
+  {0xFF0000, "Red"},
+  {0x00FF00, "Green"},
+  {0x0000FF, "Blue"},
+  {0xFFFF00, "Yellow"},
+  {0xFF00FF, "Magenta"},
+  {0x00FFFF, "Cyan"},
+  {0xFFFFFF, "White"},
+  {0x000000, "Off"}
+};
+const int numColors = sizeof(colors) / sizeof(colors[0]);
+unsigned long lastColorChange = 0;
+int currentColorIdx = 0;
 
 void getupdate()
 {
@@ -155,8 +169,14 @@ void setup() {
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
+  // Khởi tạo màu đầu tiên
+  currentColorIdx = 0;
+  led.setPixelColor(0, led.Color(
+    (colors[currentColorIdx].color >> 16) & 0xFF,
+    (colors[currentColorIdx].color >> 8) & 0xFF,
+    colors[currentColorIdx].color & 0xFF));
+  led.show();
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -172,7 +192,9 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  Serial.begin(115200);
+  Serial.begin(1152
+
+00);
   Serial.println("He thong dang khoi dong...");
   display.display();
   display.clearDisplay();
@@ -214,22 +236,13 @@ void setup() {
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
 
-  // Khởi tạo BME280
-  if (!bme.begin(0x76)) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    Serial.println("BME280 init failed!");
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("BME280 fail");
-    display.display();
-    while (1);
-  }
+  // Hiển thị màu hiện tại trên OLED
   display.clearDisplay();
+  display.setTextSize(1);
   display.setCursor(0,0);
-  display.print("BME280 ok");
+  display.print("Mau: ");
+  display.print(colors[currentColorIdx].name);
   display.display();
-  delay(500);
 }
 
 void loop() {
@@ -242,23 +255,22 @@ void loop() {
     display.display();
     getupdate();
   }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();      // °C
-  float humidity    = bme.readHumidity();         // %
-  float altitude    = bme.readAltitude(1013.25);   // m
+  // Thay đổi màu LED mỗi 1 giây và cập nhật OLED
+  if (millis() - lastColorChange >= 1000) {
+    lastColorChange = millis();
+    currentColorIdx = (currentColorIdx + 1) % numColors;
+    uint32_t c = colors[currentColorIdx].color;
+    led.setPixelColor(0, led.Color((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF));
+    led.show();
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("N: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("D: %.1f %%", humidity);
-  display.setCursor(0,20);
-  display.printf("C: %.1f m", altitude);
-  display.display();
-
-  delay(2000);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.print("Mau: ");
+    display.print(colors[currentColorIdx].name);
+    display.display();
+  }
 }
