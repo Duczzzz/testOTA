@@ -4,6 +4,7 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
+// + thư viện Adafruit BME280 by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB được cấu hình chân DIN ở GPIO9
@@ -23,6 +24,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -49,24 +51,8 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-struct ColorInfo {
-  uint32_t color;
-  const char* name;
-};
-
-ColorInfo colors[] = {
-  {0xFF0000, "Red"},
-  {0x00FF00, "Green"},
-  {0x0000FF, "Blue"},
-  {0xFFFF00, "Yellow"},
-  {0xFF00FF, "Magenta"},
-  {0x00FFFF, "Cyan"},
-  {0xFFFFFF, "White"},
-  {0x000000, "Off"}
-};
-const int numColors = sizeof(colors) / sizeof(colors[0]);
-unsigned long lastColorChange = 0;
-int currentColorIdx = 0;
+// Khai báo cảm biến BME280
+Adafruit_BME280 bme; // I2C address mặc định 0x76 hoặc 0x77
 
 void getupdate()
 {
@@ -95,7 +81,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -163,114 +150,124 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
-  Wire.begin(8,18);
-  led.begin();
-  led.setBrightness(50);
-  // Khởi tạo màu đầu tiên
-  currentColorIdx = 0;
-  led.setPixelColor(0, led.Color(
-    (colors[currentColorIdx].color >> 16) & 0xFF,
-    (colors[currentColorIdx].color >> 8) & 0xFF,
-    colors[currentColorIdx].color & 0xFF));
-  led.show();
-
-  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    Serial.println("OLED fail!");
-    while (1);
-  }
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.printf("He thong dang \nkhhoi dong...");
-  display.display();
-  delay(1000);
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
-  Serial.begin(1152
-
-00);
-  Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
-  WiFi.begin(ssid,pass);
-  while (WiFi.status() != WL_CONNECTED) {
+    /*
+      Người dùng build code tại đây
+    */
+    Wire.begin(8,18);
+    led.begin();
+    led.setBrightness(50);
     led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();
-    Serial.println("dang khoi dong WiFi...");
-    display.setCursor(0,0);
-    display.print("Conecting WiFi");
-    if(demwf < 80) {
-      display.setCursor(demwf,10);
-      display.print(".");
-      Serial0.println(".");
+    led.show();  
+    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+      led.setPixelColor(0, led.Color(255, 0, 0));
+      led.show();
+      Serial.println("OLED fail!");
+      while (1);
     }
-    else if(demwf > 80) {
-      display.clearDisplay();
-      demwf = 0;
+    // Khởi tạo cảm biến BME280
+    if (!bme.begin(0x76)) {
+        // Nếu không khởi tạo được, báo lỗi và chuyển LED sang màu đỏ
+        led.setPixelColor(0, led.Color(255, 0, 0));
+        led.show();
+        Serial.println("BME280 init failed!");
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print("BME280 error");
+        display.display();
+    } else {
+        // Khởi tạo thành công, LED màu xanh lá
+        led.setPixelColor(0, led.Color(0, 255, 0));
+        led.show();
+        Serial.println("BME280 init success");
     }
-    demwf+=5;
-    display.display();
-    digitalWrite(LED,1);
-    delay(300);
-  }
-  digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-  config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = DATABASE_SECRET;
-  Firebase.reconnectWiFi(true);
-  fbdo.setBSSLBufferSize(512, 512);
-  Firebase.begin(&config, &auth);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 30);
-  display.println("XIN CHAO CAC BAN");
-  display.display();
-  delay(300);
-  display.clearDisplay();
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
 
-  // Hiển thị màu hiện tại trên OLED
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colors[currentColorIdx].name);
-  display.display();
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.printf("He thong dang 
+khoi dong...");
+    display.display();
+    delay(1000);
+    pinMode(LED,OUTPUT);
+    digitalWrite(LED,0);
+    Serial.begin(115200);
+    Serial.println("He thong dang khoi dong...");
+    display.display();
+    display.clearDisplay();
+    WiFi.begin(ssid,pass);
+    while (WiFi.status() != WL_CONNECTED) {
+      led.setPixelColor(0, led.Color(255, 0, 255));
+      led.show();
+      Serial.println("dang khoi dong WiFi...");
+      display.setCursor(0,0);
+      display.print("Conecting WiFi");
+      // Đoạn hiển thị chấm nối WiFi (được giữ nguyên)
+      display.display();
+      digitalWrite(LED,1);
+      delay(300);
+    }
+    digitalWrite(LED,0);
+    Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
+    config.database_url = DATABASE_URL;
+    config.signer.tokens.legacy_token = DATABASE_SECRET;
+    Firebase.reconnectWiFi(true);
+    fbdo.setBSSLBufferSize(512, 512);
+    Firebase.begin(&config, &auth);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 30);
+    display.println("XIN CHAO CAC BAN");
+    display.display();
+    delay(300);
+    display.clearDisplay();
+    led.setPixelColor(0, led.Color(0, 255, 0));
+    led.show();
 }
 
 void loop() {
-  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  // Thay đổi màu LED mỗi 1 giây và cập nhật OLED
-  if (millis() - lastColorChange >= 1000) {
-    lastColorChange = millis();
-    currentColorIdx = (currentColorIdx + 1) % numColors;
-    uint32_t c = colors[currentColorIdx].color;
-    led.setPixelColor(0, led.Color((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF));
+    if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
+    if(checkupdate == 1) {
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.print("UPDATE OTA");
+      display.display();
+      getupdate();
+    }
+    /*
+      Xây dựng cơ chế xử lý của bạn tại đây
+    */
+    // Đọc dữ liệu từ cảm biến
+    float temperature = bme.readTemperature(); // độ C
+    float pressure = bme.readPressure() / 100.0F; // hPa
+    float humidity = bme.readHumidity(); // %
+
+    // Cập nhật màu LED dựa trên nhiệt độ
+    if (temperature > 35.0) {
+        led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+    } else {
+        led.setPixelColor(0, led.Color(0, 0, 255)); // Xanh dương
+    }
     led.show();
 
+    // Hiển thị lên OLED
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0,0);
-    display.print("Mau: ");
-    display.print(colors[currentColorIdx].name);
+    display.print("Nhiet do: ");
+    display.print(temperature,1);
+    display.println(" C");
+    display.print("Ap suat: ");
+    display.print(pressure,1);
+    display.println(" hPa");
+    display.print("Do am: ");
+    display.print(humidity,1);
+    display.println(" %");
     display.display();
-  }
+
+    // Đợi một chút trước vòng lặp tiếp theo
+    delay(2000);
 }
