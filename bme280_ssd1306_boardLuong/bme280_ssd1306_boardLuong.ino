@@ -24,6 +24,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_Sensor.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
