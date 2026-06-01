@@ -4,6 +4,7 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
+// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB được cấu hình chân DIN ở GPIO9
@@ -22,6 +23,7 @@
 #include <Adafruit_SSD1306.h>
 #include <HTTPClient.h>
 #include <Update.h>
+#include <DHT.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -48,13 +50,13 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-// biến cho việc nhấp nháy LED
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000; // 2 giây
-bool ledState = false;
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 void getupdate()
 {
+    display.setTextColor(SSD1306_WHITE);
     Firebase.setInt(fbdo, "/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
@@ -72,10 +74,33 @@ void getupdate()
       Serial.print("Firmware Size: ");
       Serial.println(firmwareSize);
       display.setCursor(0, 0);
-      display.printf("Firmware Size: %d",firmwareSize);
+      display.printf("Size: %d",firmwareSize);
+      display.display();
       if (Update.begin(firmwareSize))
       {
+          Update.onProgress([](size_t current, size_t total) {
+              int percent = (current * 100) / total;
+
+              Serial.printf("OTA %d%%\n", percent);
+
+              display.clearDisplay();
+              display.setCursor(0,0);
+              display.print("Updating");
+
+              display.setCursor(0,20);
+              display.print(percent);
+              display.print("%");
+              display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
+              display.fillRect(
+                    2,
+                    32,
+                    (percent * 116) / 100,
+                    6,
+                    SSD1306_WHITE);
+              display.display();
+          });
           size_t written = Update.writeStream(client);
+          display.clearDisplay();
           if (Update.size() == written)
           {
               display.setCursor(0, 10);
@@ -124,7 +149,9 @@ void getupdate()
 }
 
 void setup() {
-  // Người dùng build code tại đây
+  /*
+    Người dùng build code tại đây
+  */
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
@@ -145,12 +172,11 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  Serial.begin(115200);
+  Serial.begin(1152 00);
   Serial.println("He thong dang khoi dong...");
   display.display();
   display.clearDisplay();
   WiFi.begin(ssid,pass);
-  int demwf = 0;
   while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();
@@ -160,7 +186,7 @@ void setup() {
     if(demwf < 80) {
       display.setCursor(demwf,10);
       display.print(".");
-      Serial.println(".");
+      Serial0.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -188,13 +214,8 @@ void setup() {
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
 
-  // Khởi tạo trạng thái LED và hiển thị lần đầu
-  ledState = false;
-  digitalWrite(LED, ledState);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
+  // Khởi động DHT11
+  dht.begin();
 }
 
 void loop() {
@@ -207,19 +228,36 @@ void loop() {
     display.display();
     getupdate();
   }
-  // Xây dựng cơ chế xử lý của bạn tại đây
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED, ledState);
-    display.clearDisplay();
-    display.setCursor(0,0);
-    if (ledState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
-    display.display();
+
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  // Đọc dữ liệu DHT11
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
   }
+
+  // Cập nhật màu LED RGB dựa trên nhiệt độ
+  if (temperature > 32.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+  }
+  led.show();
+
+  // Hiển thị nhiệt độ và độ ẩm lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.printf("Nhiet do: %.1f C", temperature);
+  display.setCursor(0, 16);
+  display.printf("Do am: %.1f %%", humidity);
+  display.display();
+
+  delay(2000); // Đọc mỗi 2 giây
 }
