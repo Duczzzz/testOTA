@@ -4,7 +4,7 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện DHT sensor library by Adafruit
+// + thư viện Adafruit BME280 by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB được cấu hình chân DIN ở GPIO9
@@ -23,7 +23,7 @@
 #include <Adafruit_SSD1306.h>
 #include <HTTPClient.h>
 #include <Update.h>
-#include <DHT.h>
+#include <Adafruit_BME280.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -49,11 +49,9 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
+int demwf = 0;
 
-// DHT11 cấu hình
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
+Adafruit_BME280 bme; // I2C
 
 void getupdate()
 {
@@ -150,120 +148,116 @@ void getupdate()
 }
 
 void setup() {
-    /*
-      Người dùng build code tại đây
-    */
-    Wire.begin(8,18);
-    led.begin();
-    led.setBrightness(50);
-    led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();  
-    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-      led.setPixelColor(0, led.Color(255, 0, 0));
-      led.show();
-      Serial.println("OLED fail!");
-      while (1);
-    }
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.printf("He thong dang \nkhoi dong...");
-    display.display();
-    delay(1000);
-    pinMode(LED,OUTPUT);
-    digitalWrite(LED,0);
-    Serial.begin(115200);
-    Serial.println("He thong dang khoi dong...");
-    display.display();
-    display.clearDisplay();
-    WiFi.begin(ssid,pass);
-    // Đoạn kết nối WiFi gốc (giữ nguyên)
-    while (WiFi.status() != WL_CONNECTED) {
-      led.setPixelColor(0, led.Color(255, 0, 255));
-      led.show();
-      Serial.println("dang khoi dong WiFi...");
-      display.setCursor(0,0);
-      display.print("Conecting WiFi");
-      // giả sử biến demwf được khai báo toàn cục ở nơi khác
-      // giữ nguyên logic cũ
-      delay(300);
-    }
-    digitalWrite(LED,0);
-    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-    config.database_url = DATABASE_URL;
-    config.signer.tokens.legacy_token = DATABASE_SECRET;
-    Firebase.reconnectWiFi(true);
-    fbdo.setBSSLBufferSize(512, 512);
-    Firebase.begin(&config, &auth);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 30);
-    display.println("XIN CHAO CAC BAN");
-    display.display();
-    delay(300);
-    display.clearDisplay();
-    led.setPixelColor(0, led.Color(0, 255, 0));
+  /*
+    Người dùng build code tại đây
+  */
+  Wire.begin(8,18);
+  led.begin();
+  led.setBrightness(50);
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
+    Serial.println("OLED fail!");
+    while (1);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.printf("He thong dang \nkhhoi dong...");
+  display.display();
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
+  WiFi.begin(ssid,pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    led.setPixelColor(0, led.Color(255, 0, 255));
+    led.show();
+    Serial.println("dang khoi dong WiFi...");
+    display.setCursor(0,0);
+    display.print("Conecting WiFi");
+    if(demwf < 80) {
+      display.setCursor(demwf,10);
+      display.print(".");
+      Serial0.println(".");
+    }
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
+    }
+    demwf+=5;
+    display.display();
+    digitalWrite(LED,1);
+    delay(300);
+  }
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 30);
+  display.println("XIN CHAO CAC BAN");
+  display.display();
+  delay(300);
+  display.clearDisplay();
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
 
-    // ---- Bắt đầu phần mở rộng của người dùng ----
-    dht.begin();  // Khởi động cảm biến DHT11
-    // ---- Kết thúc phần mở rộng của người dùng ----
+  // Khởi tạo BME280
+  if (!bme.begin(0x76)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    Serial.println("BME280 init failed!");
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("BME280 fail");
+    display.display();
+    while (1);
+  }
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("BME280 ok");
+  display.display();
+  delay(500);
 }
 
 void loop() {
-    if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-    if(checkupdate == 1) {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setCursor(0, 0);
-      display.print("UPDATE OTA");
-      display.display();
-      getupdate();
-    }
-    /*
-      Xây dựng cơ chế xử lý của bạn tại đây
-    */
-    // ---- Bắt đầu phần mở rộng của người dùng ----
-    float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature(); // Celsius
+  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
 
-    // Kiểm tra giá trị đọc được hợp lệ
-    if (isnan(humidity) || isnan(temperature)) {
-        Serial.println("Failed to read from DHT sensor!");
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0,0);
-        display.print("DHT error");
-        display.display();
-    } else {
-        // Điều khiển LED dựa trên nhiệt độ
-        if (temperature > 32.0) {
-            digitalWrite(LED, HIGH);
-        } else {
-            digitalWrite(LED, LOW);
-        }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  float temperature = bme.readTemperature();      // °C
+  float humidity    = bme.readHumidity();         // %
+  float altitude    = bme.readAltitude(1013.25);   // m
 
-        // Hiển thị nhiệt độ và độ ẩm lên OLED
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0,0);
-        display.print("Nhiet do: ");
-        display.print(temperature,1);
-        display.println(" C");
-        display.print("Do am:   ");
-        display.print(humidity,1);
-        display.println(" %");
-        display.display();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.printf("N: %.1f C", temperature);
+  display.setCursor(0,10);
+  display.printf("D: %.1f %%", humidity);
+  display.setCursor(0,20);
+  display.printf("C: %.1f m", altitude);
+  display.display();
 
-        // Ghi log ra Serial
-        Serial.print("Nhiet do: ");
-        Serial.print(temperature);
-        Serial.print(" C, Do am: ");
-        Serial.print(humidity);
-        Serial.println(" %");
-    }
-
-    delay(2000); // Đọc mỗi 2 giây
-    // ---- Kết thúc phần mở rộng của người dùng ----
+  delay(2000);
 }
