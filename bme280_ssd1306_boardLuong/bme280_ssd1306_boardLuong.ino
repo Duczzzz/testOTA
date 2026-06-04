@@ -16,7 +16,7 @@
 #include <WiFi.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SH110X.h>
+//#include <Adafruit_SH110X.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
