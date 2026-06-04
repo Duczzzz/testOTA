@@ -1,22 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện Adafruit BMP280 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB được cấu hình chân DIN ở GPIO9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// BMP280 SDA chân 8
-// BMP280 SCL chân 18
-// Oled tft SDA chân 8
-// Oled tft SCL chân 18
-// DHT chân 11
-// Điều khiển driver động cơ chân GPIO16 và GPIO15
-
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -26,7 +7,6 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_Sensor.h>
-#include <Adafruit_BMP280.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -52,8 +32,10 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-
-Adafruit_BMP280 bmp; // I2C BMP280 object
+int demwf = 0;
+unsigned long previousMillis = 0;
+const long interval = 1000;
+bool ledState = false;
 
 void getupdate()
 {
@@ -68,67 +50,67 @@ void getupdate()
 
     if (httpCode == HTTP_CODE_OK)
     {
-      WiFiClient& client = http.getStream();
-      int firmwareSize = http.getSize();
-      display.clearDisplay();
-      display.setTextSize(1);
-      Serial.print("Firmware Size: ");
-      Serial.println(firmwareSize);
-      display.setCursor(0, 0);
-      display.printf("Size: %d",firmwareSize);
-      display.display();
-      if (Update.begin(firmwareSize))
-      {
-          Update.onProgress([](size_t current, size_t total) {
-              int percent = (current * 100) / total;
+        WiFiClient& client = http.getStream();
+        int firmwareSize = http.getSize();
+        display.clearDisplay();
+        display.setTextSize(1);
+        Serial.print("Firmware Size: ");
+        Serial.println(firmwareSize);
+        display.setCursor(0, 0);
+        display.printf("Size: %d",firmwareSize);
+        display.display();
+        if (Update.begin(firmwareSize))
+        {
+            Update.onProgress([](size_t current, size_t total) {
+                int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+                Serial.printf("OTA %d%%\n", percent);
 
-              display.clearDisplay();
-              display.setCursor(0,0);
-              display.print("Updating");
+                display.clearDisplay();
+                display.setCursor(0,0);
+                display.print("Updating");
 
-              display.setCursor(0,20);
-              display.print(percent);
-              display.print("%");
-              display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(
-                    2,
-                    32,
-                    (percent * 116) / 100,
-                    6,
-                    SSD1306_WHITE);
-              display.display();
-          });
-          size_t written = Update.writeStream(client);
-          display.clearDisplay();
-          if (Update.size() == written)
-          {
-              display.setCursor(0, 10);
-              display.print("Update successfully completed");
-              Serial.println("Update successfully completed. Rebooting...");
-              if (Update.end())
-              {
-                  Serial.println("Rebooting...");
-                  display.setCursor(0, 30);
-                  display.printf("Rebooting...");
-                  ESP.restart();
-              } 
-              else 
-              {
-                  Serial.print("Update failed: ");
-                  display.setCursor(0, 30);
-                  display.print("Update failed");
-                  Serial.println(Update.errorString());
-              }
-          }
-          else
-          {
-              display.setCursor(0, 30);
-              display.print("Not enough space for OTA.");
-              Serial.println("Not enough space for OTA.");
-          }
-      } 
+                display.setCursor(0,20);
+                display.print(percent);
+                display.print("%");
+                display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
+                display.fillRect(
+                      2,
+                      32,
+                      (percent * 116) / 100,
+                      6,
+                      SSD1306_WHITE);
+                display.display();
+            });
+            size_t written = Update.writeStream(client);
+            display.clearDisplay();
+            if (Update.size() == written)
+            {
+                display.setCursor(0, 10);
+                display.print("Update successfully completed");
+                Serial.println("Update successfully completed. Rebooting...");
+                if (Update.end())
+                {
+                    Serial.println("Rebooting...");
+                    display.setCursor(0, 30);
+                    display.printf("Rebooting...");
+                    ESP.restart();
+                } 
+                else 
+                {
+                    Serial.print("Update failed: ");
+                    display.setCursor(0, 30);
+                    display.print("Update failed");
+                    Serial.println(Update.errorString());
+                }
+            }
+            else
+            {
+                display.setCursor(0, 30);
+                display.print("Not enough space for OTA.");
+                Serial.println("Not enough space for OTA.");
+            }
+        } 
         else
         {
             display.setCursor(0, 10);
@@ -150,105 +132,106 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
-  Wire.begin(8,18);
-  led.begin();
-  led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
-  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    Serial.println("OLED fail!");
-    while (1);
-  }
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.printf("He thong dang khoi dong...");
-  display.display();
-  delay(1000);
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
-  Serial.begin(115200);
-  Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
-  WiFi.begin(ssid,pass);
-  while (WiFi.status() != WL_CONNECTED) {
+    /* 
+      Người dùng build code tại đây 
+    */
+    Wire.begin(8,18);
+    led.begin();
+    led.setBrightness(50);
     led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();
-    Serial.println("dang khoi dong WiFi...");
-    display.setCursor(0,0);
-    display.print("Conecting WiFi");
-    // demwf không được khai báo trong source gốc, bỏ qua phần hiển thị chấm
-    digitalWrite(LED,1);
+    led.show();  
+    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+        led.setPixelColor(0, led.Color(255, 0, 0));
+        led.show();
+        Serial.println("OLED fail!");
+        while (1);
+    }
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.printf("He thong dang khoi dong...");
+    display.display();
+    delay(1000);
+    pinMode(LED,OUTPUT);
+    digitalWrite(LED,0);
+    pinMode(15, OUTPUT); // Motor driver IN1
+    pinMode(16, OUTPUT); // Motor driver IN2
+    digitalWrite(15, LOW);
+    digitalWrite(16, LOW);
+    Serial.begin(115200);
+    Serial.println("He thong dang khoi dong...");
+    display.display();
+    display.clearDisplay();
+    WiFi.begin(ssid,pass);
+    while (WiFi.status() != WL_CONNECTED) {
+        led.setPixelColor(0, led.Color(255, 0, 255));
+        led.show();
+        Serial.println("dang khoi dong WiFi...");
+        display.setCursor(0,0);
+        display.print("Conecting WiFi");
+        if(demwf < 80) {
+            display.setCursor(demwf,10);
+            display.print(".");
+            Serial.println(".");
+        }
+        else if(demwf > 80) {
+            display.clearDisplay();
+            demwf = 0;
+        }
+        demwf+=5;
+        display.display();
+        digitalWrite(LED,1);
+        delay(300);
+    }
+    digitalWrite(LED,0);
+    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+    config.database_url = DATABASE_URL;
+    config.signer.tokens.legacy_token = DATABASE_SECRET;
+    Firebase.reconnectWiFi(true);
+    fbdo.setBSSLBufferSize(512, 512);
+    Firebase.begin(&config, &auth);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 30);
+    display.println("XIN CHAO CAC BAN");
+    display.display();
     delay(300);
-  }
-  digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-  config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = DATABASE_SECRET;
-  Firebase.reconnectWiFi(true);
-  fbdo.setBSSLBufferSize(512, 512);
-  Firebase.begin(&config, &auth);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 30);
-  display.println("XIN CHAO CAC BAN");
-  display.display();
-  delay(300);
-  display.clearDisplay();
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
-
-  // Khởi tạo BMP280
-  if (!bmp.begin(0x76)) { // địa chỉ I2C mặc định 0x76 hoặc 0x77
-    led.setPixelColor(0, led.Color(255,0,0));
+    display.clearDisplay();
+    led.setPixelColor(0, led.Color(0, 255, 0));
     led.show();
-    Serial.println("BMP280 fail!");
-    while (1);
-  }
-  display.setCursor(0,0);
-  display.println("BMP280 OK");
-  display.display();
-  delay(500);
 }
 
 void loop() {
-  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  float temperature = bmp.readTemperature();      // độ C
-  float pressure = bmp.readPressure() / 100.0F;    // hPa
+    if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
+    if(checkupdate == 1) {
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(0, 0);
+        display.print("UPDATE OTA");
+        display.display();
+        getupdate();
+    }
+    /* 
+      Xây dựng cơ chế xử lý của bạn tại đây 
+    */
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= interval) {
+        previousMillis = currentMillis;
+        ledState = !ledState;
+        digitalWrite(LED, ledState);
+        led.setPixelColor(0, ledState ? led.Color(0,255,0) : led.Color(0,0,255));
+        led.show();
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.printf("Nhiet: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("Ap suat: %.1f hPa", pressure);
-  display.display();
-
-  if (temperature > 35.0) {
-    led.setPixelColor(0, led.Color(255,0,0)); // đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0,0,255)); // xanh dương
-  }
-  led.show();
-
-  delay(1000);
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(0,0);
+        display.print("LED ");
+        display.print(ledState ? "ON" : "OFF");
+        display.setCursor(0,10);
+        display.print("Uptime: ");
+        display.print(currentMillis/1000);
+        display.print("s");
+        display.display();
+    }
 }
