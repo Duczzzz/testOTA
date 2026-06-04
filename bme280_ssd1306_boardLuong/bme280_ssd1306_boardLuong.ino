@@ -1,3 +1,21 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB được cấu hình chân DIN ở GPIO9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// BMP280 SDA chân 8
+// BMP280 SCL chân 18
+// Oled tft SDA chân 8
+// Oled tft SCL chân 18
+// DHT chân 11
+// Điều khiển driver động cơ chân GPIO16 và GPIO15
+
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -32,7 +50,11 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-int demwf = 0;
+
+// Biến toàn cục cho việc nhấp nháy LED
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000; // 2 giây
+bool ledState = false;
 
 void getupdate()
 {
@@ -61,7 +83,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -132,6 +155,12 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo trạng thái LED và biến thời gian
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, LOW);
+  ledState = false;
+  previousMillis = millis();
+
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
@@ -147,7 +176,8 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang \nkhoi dong...");
+  display.printf("He thong dang 
+khoi dong...");
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
@@ -166,7 +196,7 @@ void setup() {
     if(demwf < 80) {
       display.setCursor(demwf,10);
       display.print(".");
-      Serial.println(".");
+      Serial0.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -178,7 +208,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -208,20 +240,16 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long lastToggle = 0;
-  static bool ledState = false;
-  unsigned long now = millis();
-  if (now - lastToggle >= 2000) {
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
     ledState = !ledState;
     digitalWrite(LED, ledState ? HIGH : LOW);
     display.clearDisplay();
     display.setTextSize(1);
-    display.setCursor(0, 0);
+    display.setCursor(0,0);
     display.print("LED ");
-    display.print(LED);
-    display.print(": ");
     display.print(ledState ? "ON" : "OFF");
     display.display();
-    lastToggle = now;
   }
 }
