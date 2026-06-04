@@ -16,10 +16,10 @@ const char* pass = "04072009";
 #define LED_COUNT 1
 Adafruit_NeoPixel led(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-#define LED 2               // LED điều khiển nhiệt độ
-#define DHT_PIN 11
-#define DHT_TYPE DHT11
-DHT dht(DHT_PIN, DHT_TYPE);
+#define LED 2          // LED điều khiển nhiệt độ
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 #define i2c_Address 0x3c
 #define SCREEN_WIDTH 128
@@ -36,7 +36,7 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-int demwf = 0;   // biến đếm WiFi (được sử dụng trong phần gốc)
+int demwf = 0;
 
 void getupdate()
 {
@@ -112,12 +112,12 @@ void getupdate()
                 Serial.println("Not enough space for OTA.");
             }
         } 
-        else
-        {
-            display.setCursor(0, 10);
-            display.print("Failed to begin OTA update.");
-            Serial.println("Failed to begin OTA update.");
-        }
+          else
+          {
+              display.setCursor(0, 10);
+              display.print("Failed to begin OTA update.");
+              Serial.println("Failed to begin OTA update.");
+          }
     }
     else
     {
@@ -133,20 +133,17 @@ void getupdate()
 }
 
 void setup() {
-    /*
-      Người dùng build code tại đây
-    */
+    /* Người dùng build code tại đây */
     Wire.begin(8,18);
     led.begin();
     led.setBrightness(50);
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();  
-
     if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-        led.setPixelColor(0, led.Color(255, 0, 0));
-        led.show();
-        Serial.println("OLED fail!");
-        while (1);
+      led.setPixelColor(0, led.Color(255, 0, 0));
+      led.show();
+      Serial.println("OLED fail!");
+      while (1);
     }
     display.clearDisplay();
     display.setTextSize(1);
@@ -155,37 +152,35 @@ void setup() {
     display.printf("He thong dang khoi dong...");
     display.display();
     delay(1000);
-
     pinMode(LED,OUTPUT);
     digitalWrite(LED,0);
-
-    dht.begin();   // khởi tạo cảm biến DHT11
-
     Serial.begin(115200);
     Serial.println("He thong dang khoi dong...");
     display.display();
     display.clearDisplay();
 
+    dht.begin();   // Khởi động DHT11
+
     WiFi.begin(ssid,pass);
     while (WiFi.status() != WL_CONNECTED) {
-        led.setPixelColor(0, led.Color(255, 0, 255));
-        led.show();
-        Serial.println("dang khoi dong WiFi...");
-        display.setCursor(0,0);
-        display.print("Conecting WiFi");
-        if(demwf < 80) {
-            display.setCursor(demwf,10);
-            display.print(".");
-            Serial.println(".");
-        }
-        else if(demwf > 80) {
-            display.clearDisplay();
-            demwf = 0;
-        }
-        demwf+=5;
-        display.display();
-        digitalWrite(LED,1);
-        delay(300);
+      led.setPixelColor(0, led.Color(255, 0, 255));
+      led.show();
+      Serial.println("dang khoi dong WiFi...");
+      display.setCursor(0,0);
+      display.print("Conecting WiFi");
+      if(demwf < 80) {
+        display.setCursor(demwf,10);
+        display.print(".");
+        Serial.println(".");
+      }
+      else if(demwf > 80) {
+        display.clearDisplay();
+        demwf = 0;
+      }
+      demwf+=5;
+      display.display();
+      digitalWrite(LED,1);
+      delay(300);
     }
     digitalWrite(LED,0);
     Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
@@ -208,19 +203,17 @@ void setup() {
 void loop() {
     if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
     if(checkupdate == 1) {
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0, 0);
-        display.print("UPDATE OTA");
-        display.display();
-        getupdate();
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.print("UPDATE OTA");
+      display.display();
+      getupdate();
     }
 
-    /*
-      Xây dựng cơ chế xử lý của bạn tại đây
-    */
+    /* Xây dựng cơ chế xử lý của bạn tại đây */
     float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature();
+    float temperature = dht.readTemperature(); // Celsius
 
     if (isnan(humidity) || isnan(temperature)) {
         Serial.println("Failed to read from DHT sensor!");
@@ -237,11 +230,12 @@ void loop() {
     // Hiển thị lên OLED
     display.clearDisplay();
     display.setTextSize(1);
-    display.setCursor(0,0);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
     display.printf("Nhiet do: %.1f C", temperature);
-    display.setCursor(0,10);
-    display.printf("Do am: %.1f %%", humidity);
+    display.setCursor(0, 15);
+    display.printf("Do am:   %.1f %%", humidity);
     display.display();
 
-    delay(2000); // cập nhật mỗi 2 giây
+    delay(2000); // Đọc mỗi 2 giây
 }
