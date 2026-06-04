@@ -1,3 +1,15 @@
+// Đây là source test các nút bấm trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện DHT sensor libraray by Adafruit 
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SH110X by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB được cấu hình chân DIN ở GPIO9
+// Chân Data DHT được kết nối với GPIO11
+
 #include <Wire.h>
 #include "DHT.h"
 #include <FirebaseESP32.h>
@@ -5,11 +17,9 @@
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
-#include <HTTPClient.h>
-#include <Update.h>
 
-const char* ssid = "........";
-const char* pass = "........";
+const char* ssid = "Su Ni";
+const char* pass = "04072009";
 
 #define LED_PIN   9
 #define LED_COUNT 1
@@ -35,69 +45,6 @@ DHT dht(DHTPIN, DHTTYPE);
 
 float temp,hum,CBND,CBDA,lastemp,lasthum;
 int demwf = 0;
-
-const char* firmwareUrl = "https://raw.githubusercontent.com/Duczzzz/testOTA/main/firmware.ino.bin";
-int checkupdate = 0;
-
-void getupdate()
-{
-    Serial.print("Starting OTA from: ");
-    Serial.println(firmwareUrl);
-    HTTPClient http;
-    http.begin(firmwareUrl);
-    int httpCode = http.GET();
-
-    if (httpCode == HTTP_CODE_OK)
-    {
-        WiFiClient& client = http.getStream();
-        int firmwareSize = http.getSize();
-        Serial.print("Firmware size: ");
-        Serial.println(firmwareSize);
-
-        if (Update.begin(firmwareSize))
-        {
-            Update.onProgress([](size_t current, size_t total) {
-                int percent = (current * 100) / total;
-                Serial.printf("OTA Progress: %d%%\n", percent);
-                led.setPixelColor(0, led.Color(0, 0, 255));
-                led.show();
-            });
-
-            size_t written = Update.writeStream(client);
-            if (Update.size() == written)
-            {
-                Serial.println("OTA written successfully, finalizing...");
-                if (Update.end())
-                {
-                    Serial.println("OTA update successful, rebooting...");
-                    Firebase.setInt(fbdo, "/updateOTA", 0);
-                    ESP.restart();
-                }
-                else
-                {
-                    Serial.print("OTA end failed: ");
-                    Serial.println(Update.errorString());
-                }
-            }
-            else
-            {
-                Serial.println("OTA write mismatch, not enough space.");
-            }
-        }
-        else
-        {
-            Serial.println("Failed to start OTA Update.");
-        }
-    }
-    else
-    {
-        Serial.print("Failed to download OTA, HTTP code: ");
-        Serial.println(httpCode);
-    }
-    http.end();
-    led.setPixelColor(0, led.Color(0, 255, 0));
-    led.show();
-}
 
 void setup() {
   // Wire.begin(12,13);
@@ -163,12 +110,6 @@ void setup() {
 }
 
 void loop() {
-  if(Firebase.getInt(fbdo,"/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    getupdate();
-    checkupdate = 0;
-  }
-
   // if (!Firebase.readStream(fbdo)) {
   //   Serial.println(fbdo.errorReason());
   //   return;
