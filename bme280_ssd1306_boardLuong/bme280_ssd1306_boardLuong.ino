@@ -1,3 +1,21 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB được cấu hình chân DIN ở GPIO9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// BMP280 SDA chân 8
+// BMP280 SCL chân 18
+// Oled tft SDA chân 8
+// Oled tft SCL chân 18
+// DHT chân 11
+// Điều khiển driver động cơ chân GPIO16 và GPIO15
+
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -32,8 +50,11 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-unsigned long previousMillis = 0;
-const long blinkInterval = 500;
+
+// Mảng màu cho LED RGB (định dạng 0xRRGGBB)
+uint32_t colors[] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF, 0xFFFFFF};
+int colorIndex = 0;
+unsigned long lastChange = 0;
 
 void getupdate()
 {
@@ -194,6 +215,9 @@ void setup() {
   display.clearDisplay();
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
+
+  // Khởi tạo thời gian thay đổi màu LED
+  lastChange = millis();
 }
 
 void loop() {
@@ -209,9 +233,15 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= blinkInterval) {
-    previousMillis = currentMillis;
-    digitalWrite(LED, !digitalRead(LED));
+  // Thay đổi màu LED RGB mỗi 1 giây
+  if (millis() - lastChange >= 1000) {
+    lastChange = millis();
+    colorIndex = (colorIndex + 1) % (sizeof(colors) / sizeof(colors[0]));
+    uint32_t c = colors[colorIndex];
+    uint8_t r = (c >> 16) & 0xFF;
+    uint8_t g = (c >> 8) & 0xFF;
+    uint8_t b = c & 0xFF;
+    led.setPixelColor(0, led.Color(r, g, b));
+    led.show();
   }
 }
