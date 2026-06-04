@@ -50,11 +50,7 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-
-// Biến dùng cho nhấp nháy LED
-unsigned long previousMillis = 0;
-const unsigned long intervalLED = 2000; // 2 giây
-bool ledState = false;
+int demwf = 0; // khai báo biến demwf nếu chưa có
 
 void getupdate()
 {
@@ -154,15 +150,6 @@ void setup() {
     /*
       Người dùng build code tại đây
     */
-    pinMode(LED, OUTPUT);
-    digitalWrite(LED, LOW);
-    ledState = false;
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.println("LED OFF");
-    display.display();
-
     Wire.begin(8,18);
     led.begin();
     led.setBrightness(50);
@@ -224,7 +211,13 @@ void setup() {
     display.clearDisplay();
     led.setPixelColor(0, led.Color(0, 255, 0));
     led.show();
+
+    // Khởi tạo trạng thái LED ban đầu cho chân 2
+    digitalWrite(LED, LOW);
 }
+
+unsigned long previousMillis = 0;
+const long interval = 500; // 500ms cho mỗi trạng thái (on/off)
 
 void loop() {
     if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
@@ -240,18 +233,17 @@ void loop() {
       Xây dựng cơ chế xử lý của bạn tại đây
     */
     unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= intervalLED) {
+    if (currentMillis - previousMillis >= interval) {
         previousMillis = currentMillis;
-        ledState = !ledState;
-        digitalWrite(LED, ledState ? HIGH : LOW);
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0,0);
-        if (ledState) {
-            display.println("LED ON");
+        // Đảo trạng thái LED chân 2
+        int state = digitalRead(LED);
+        digitalWrite(LED, !state);
+        // Cập nhật trạng thái NeoPixel đồng thời để dễ quan sát
+        if (!state) {
+            led.setPixelColor(0, led.Color(0, 255, 0));
         } else {
-            display.println("LED OFF");
+            led.setPixelColor(0, led.Color(0, 0, 0));
         }
-        display.display();
+        led.show();
     }
 }
