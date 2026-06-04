@@ -50,8 +50,11 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
+
+// biến toàn cục cho việc nhấp nháy LED
 unsigned long previousMillis = 0;
-const long interval = 1000;
+const unsigned long interval = 2000; // 2 giây
+bool ledState = false;
 
 void getupdate()
 {
@@ -170,7 +173,7 @@ void setup() {
     display.display();
     delay(1000);
     pinMode(LED,OUTPUT);
-    digitalWrite(LED,0);
+    digitalWrite(LED,LOW);
     Serial.begin(115200);
     Serial.println("He thong dang khoi dong...");
     display.display();
@@ -182,6 +185,7 @@ void setup() {
       Serial.println("dang khoi dong WiFi...");
       display.setCursor(0,0);
       display.print("Conecting WiFi");
+      static int demwf = 0;
       if(demwf < 80) {
         display.setCursor(demwf,10);
         display.print(".");
@@ -193,10 +197,10 @@ void setup() {
       }
       demwf+=5;
       display.display();
-      digitalWrite(LED,1);
+      digitalWrite(LED,HIGH);
       delay(300);
     }
-    digitalWrite(LED,0);
+    digitalWrite(LED,LOW);
     Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
     config.database_url = DATABASE_URL;
     config.signer.tokens.legacy_token = DATABASE_SECRET;
@@ -212,6 +216,14 @@ void setup() {
     display.clearDisplay();
     led.setPixelColor(0, led.Color(0, 255, 0));
     led.show();
+
+    // Khởi tạo trạng thái LED và hiển thị lần đầu
+    ledState = false;
+    digitalWrite(LED, LOW);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("LED OFF");
+    display.display();
 }
 
 void loop() {
@@ -230,6 +242,11 @@ void loop() {
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval) {
         previousMillis = currentMillis;
-        digitalWrite(LED, !digitalRead(LED));
+        ledState = !ledState;
+        digitalWrite(LED, ledState ? HIGH : LOW);
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print(ledState ? "LED ON" : "LED OFF");
+        display.display();
     }
 }
