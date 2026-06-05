@@ -57,10 +57,7 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000;
-bool ledState = false;
-
+int demwf = 0;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -156,20 +153,7 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
-  // Không cần thay đổi gì ở đây vì LED và OLED đã được khởi tạo phía trên.
-  // Thiết lập chế độ cho chân LED (GPIO2) đã thực hiện ở phần cuối của setup gốc.
-  // Đặt trạng thái ban đầu cho LED và hiển thị trên OLED
-  digitalWrite(LED, LOW);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
-
+  // Người dùng build code tại đây
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
@@ -185,7 +169,7 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang \nkhoi dong...");
+  display.printf("He thong dang khoi dong...");
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
@@ -216,7 +200,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -243,19 +227,18 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+
+  // Xây dựng cơ chế xử lý của bạn tại đây
+  static unsigned long lastToggle = 0;
+  static bool ledState = false;
+  if (millis() - lastToggle >= 2000) {
+    lastToggle = millis();
     ledState = !ledState;
-    digitalWrite(LED, ledState);
+    digitalWrite(LED, ledState ? HIGH : LOW);
     display.clearDisplay();
     display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
     display.setCursor(0,0);
-    display.print("LED ");
+    display.print("LED: ");
     display.print(ledState ? "ON" : "OFF");
     display.display();
   }
