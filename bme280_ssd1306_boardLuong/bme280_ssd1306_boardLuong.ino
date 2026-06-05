@@ -51,10 +51,22 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-// Biến cho mặt cười di chuyển
-int smileY = SCREEN_HEIGHT - 12; // vị trí bắt đầu ở dưới cùng
-unsigned long lastMoveTime = 0;
-const unsigned long moveInterval = 150; // ms
+// --- Cấu hình nút nhấn và màu LED ---
+#define BUTTON_PIN 13               // GPIO dùng cho nút sw7
+const unsigned long debounceDelay = 50;
+int buttonState = HIGH;
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+int colorIndex = 0;
+const uint32_t colors[4] = {
+  0xFF0000, // Đỏ
+  0x00FF00, // Xanh lá
+  0x0000FF, // Xanh dương
+  0xFFFF00  // Vàng
+};
+const char* colorNames[4] = {
+  "Do", "Xanh", "XanhDuong", "Vang"
+};
 
 void getupdate()
 {
@@ -159,6 +171,10 @@ void setup() {
   led.setBrightness(50);
   led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
+  
+  // cấu hình nút nhấn
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -169,7 +185,7 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang khoi dong...");
+  display.printf("He thong dang \nkhhoi dong...");
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
@@ -179,17 +195,16 @@ void setup() {
   display.display();
   display.clearDisplay();
   WiFi.begin(ssid,pass);
-  int demwf = 0;
   while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();
     Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
     display.print("Conecting WiFi");
+    static int demwf = 0;
     if(demwf < 80) {
       display.setCursor(demwf,10);
       display.print(".");
-      Serial.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -216,10 +231,6 @@ void setup() {
   display.clearDisplay();
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
-
-  // Khởi tạo vị trí mặt cười
-  smileY = SCREEN_HEIGHT - 12;
-  lastMoveTime = millis();
 }
 
 void loop() {
@@ -232,46 +243,28 @@ void loop() {
     display.display();
     getupdate();
   }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-
-  // Di chuyển mặt cười lên trên theo thời gian
-  unsigned long currentTime = millis();
-  if (currentTime - lastMoveTime >= moveInterval) {
-    lastMoveTime = currentTime;
-    // Xóa màn hình cũ
-    display.clearDisplay();
-
-    // Vẽ mặt cười tại vị trí mới
-    int centerX = SCREEN_WIDTH / 2;
-    int radius = 10;
-    int y = smileY;
-
-    // Đầu
-    display.drawCircle(centerX, y, radius, SSD1306_WHITE);
-    // Mắt
-    display.fillCircle(centerX - 4, y - 3, 1, SSD1306_WHITE);
-    display.fillCircle(centerX + 4, y - 3, 1, SSD1306_WHITE);
-    // Miệng (cười)
-    display.drawArc(centerX, y + 2, 6, 0, 180, SSD1306_WHITE); // drawArc không có trong SSD1306, dùng line thay thế
-    // Thay thế bằng các đoạn line tạo nụ cười
-    for (int i = -5; i <= 5; i++) {
-      int x1 = centerX + i;
-      int y1 = y + 2 + sqrt(25 - i*i) / 2;
-      int x2 = x1 + 1;
-      int y2 = y + 2 + sqrt(25 - (i+1)*(i+1)) / 2;
-      display.drawLine(x1, y1, x2, y2, SSD1306_WHITE);
-    }
-
-    display.display();
-
-    // Cập nhật vị trí tiếp theo
-    smileY -= 2;
-    if (smileY < -radius) {
-      // Khi mặt cười ra khỏi màn hình, reset vị trí xuống dưới
-      smileY = SCREEN_HEIGHT + radius;
+  // Đọc nút và chuyển màu LED
+  int reading = digitalRead(BUTTON_PIN);
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) {
+        colorIndex = (colorIndex + 1) % 4;
+        led.setPixelColor(0, colors[colorIndex]);
+        led.show();
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print("Mau: ");
+        display.print(colorNames[colorIndex]);
+        display.display();
+      }
     }
   }
+  lastButtonState = reading;
 }
