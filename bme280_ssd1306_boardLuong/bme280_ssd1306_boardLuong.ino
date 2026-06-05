@@ -51,23 +51,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-// --- Cấu hình nút nhấn và màu LED ---
-#define BUTTON_PIN 13               // GPIO dùng cho nút sw7
-const unsigned long debounceDelay = 50;
-int buttonState = HIGH;
-int lastButtonState = HIGH;
-unsigned long lastDebounceTime = 0;
-int colorIndex = 0;
-const uint32_t colors[4] = {
-  0xFF0000, // Đỏ
-  0x00FF00, // Xanh lá
-  0x0000FF, // Xanh dương
-  0xFFFF00  // Vàng
-};
-const char* colorNames[4] = {
-  "Do", "Xanh", "XanhDuong", "Vang"
-};
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -95,7 +78,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -171,10 +155,6 @@ void setup() {
   led.setBrightness(50);
   led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
-  
-  // cấu hình nút nhấn
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -185,7 +165,7 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang \nkhhoi dong...");
+  display.printf("He thong dang \nkhoi dong...");
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
@@ -201,10 +181,10 @@ void setup() {
     Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
     display.print("Conecting WiFi");
-    static int demwf = 0;
     if(demwf < 80) {
       display.setCursor(demwf,10);
       display.print(".");
+      Serial0.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -216,7 +196,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -229,42 +209,4 @@ void setup() {
   display.display();
   delay(300);
   display.clearDisplay();
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
-}
-
-void loop() {
-  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  // Đọc nút và chuyển màu LED
-  int reading = digitalRead(BUTTON_PIN);
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
-  }
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != buttonState) {
-      buttonState = reading;
-      if (buttonState == LOW) {
-        colorIndex = (colorIndex + 1) % 4;
-        led.setPixelColor(0, colors[colorIndex]);
-        led.show();
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.print("Mau: ");
-        display.print(colorNames[colorIndex]);
-        display.display();
-      }
-    }
-  }
-  lastButtonState = reading;
-}
+  led.setPixelColor(0, led.Color(0, 255
