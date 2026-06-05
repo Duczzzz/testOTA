@@ -1,1 +1,1 @@
-// Model: gpt-4o
+// Đang sử dụng chế độ lập trình nhúng cho nền tảng NukeDashboard (ESP32)
