@@ -4,7 +4,6 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 
@@ -33,7 +32,6 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_Sensor.h>
-#include <DHT.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
@@ -59,11 +57,9 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int checkupdate = 0;
-
-// DHT11 cấu hình
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000;
+bool ledState = false;
 
 void getupdate()
 {
@@ -163,6 +159,17 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Không cần thay đổi gì ở đây vì LED và OLED đã được khởi tạo phía trên.
+  // Thiết lập chế độ cho chân LED (GPIO2) đã thực hiện ở phần cuối của setup gốc.
+  // Đặt trạng thái ban đầu cho LED và hiển thị trên OLED
+  digitalWrite(LED, LOW);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
+
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
@@ -194,12 +201,10 @@ void setup() {
     Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
     display.print("Conecting WiFi");
-    // demwf chưa được khai báo trong source gốc, giữ nguyên logic ban đầu
-    static int demwf = 0;
     if(demwf < 80) {
       display.setCursor(demwf,10);
       display.print(".");
-      Serial.println(".");
+      Serial0.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -211,7 +216,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -226,9 +231,6 @@ void setup() {
   display.clearDisplay();
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
-
-  // Khởi tạo DHT11
-  dht.begin();
 }
 
 void loop() {
@@ -244,35 +246,17 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Đọc giá trị từ DHT11
-  float h = dht.readHumidity();
-  float t = dht.readTemperature(); // Độ C
-
-  if (isnan(h) || isnan(t)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0,0);
+    display.print("LED ");
+    display.print(ledState ? "ON" : "OFF");
+    display.display();
   }
-
-  // Đổi màu LED RGB dựa trên nhiệt độ
-  if (t > 32.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
-  }
-  led.show();
-
-  // Hiển thị nhiệt độ và độ ẩm lên OLED
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.printf("Nhiiet do: %.1f C", t);
-  display.setCursor(0, 20);
-  display.printf("Do am: %.1f %%", h);
-  display.display();
-
-  // Optional: in ra Serial
-  Serial.printf("Nhiệt độ: %.1f C, Độ ẩm: %.1f %%\n", t, h);
-
-  delay(2000); // Cập nhật mỗi 2 giây
 }
