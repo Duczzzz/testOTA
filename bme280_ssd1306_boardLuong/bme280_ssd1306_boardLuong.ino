@@ -1,3 +1,29 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// + thư viện DHT sensor library by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+
+// Cấu hình phần cứng của Board (bắt buộc phải đọc):
+// + Led RGB được cấu hình chân DIN ở GPIO9
+// + BME280 SDA chân 8
+// + BME280 SCL chân 18
+// + BMP280 SDA chân 8
+// + BMP280 SCL chân 18
+// + Oled tft SDA chân 8
+// + Oled tft SCL chân 18
+// + DHT chân 11
+// + Điều khiển driver động cơ chân GPIO16 và GPIO15
+// + Nút nhấn sw8 chân 10 tích cực mức thấp
+// + Nút nhấn sw9 chân 12 tích cực mức thấp
+// + Nút nhấn sw11 chân 14 tích cực mức thấp
+// + Cảm biến khí CO MQ7 giá trị Analog chân 5, giá trị digital chân 4
+// + Cảm biến Khói gas MQ2 giá trị Analog chân 6, giá trị digital chân 7
+
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -7,9 +33,10 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_Sensor.h>
+#include <DHT.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Su Ni";
+const char* pass = "04072009";
 
 #define LED_PIN   9
 #define LED_COUNT 1
@@ -33,9 +60,10 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 
-// Global variables for LED color handling
-uint32_t ledColors[6];
-uint8_t currentColor = 0;
+// DHT11 cấu hình
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 void getupdate()
 {
@@ -64,8 +92,7 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%
-", percent);
+              Serial.printf("OTA %d%%\n", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -133,128 +160,119 @@ void getupdate()
 }
 
 void setup() {
-    /*
-      Người dùng build code tại đây
-    */
-    // Khởi tạo mảng màu LED
-    ledColors[0] = led.Color(255, 0, 0);   // Đỏ
-    ledColors[1] = led.Color(0, 255, 0);   // Xanh lá
-    ledColors[2] = led.Color(0, 0, 255);   // Xanh dương
-    ledColors[3] = led.Color(255, 255, 0); // Vàng
-    ledColors[4] = led.Color(0, 255, 255); // Xanh lơ
-    ledColors[5] = led.Color(255, 0, 255); // Hồng tím
-
-    // Đặt màu khởi đầu
-    currentColor = 0;
-    led.setPixelColor(0, ledColors[currentColor]);
+  /*
+    Người dùng build code tại đây
+  */
+  Wire.begin(8,18);
+  led.begin();
+  led.setBrightness(50);
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
-
-    // Hiển thị màu hiện tại trên OLED
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
+    Serial.println("OLED fail!");
+    while (1);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.printf("He thong dang \nkhoi dong...");
+  display.display();
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
+  WiFi.begin(ssid,pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    led.setPixelColor(0, led.Color(255, 0, 255));
+    led.show();
+    Serial.println("dang khoi dong WiFi...");
     display.setCursor(0,0);
-    display.print("LED Color:");
-    display.setCursor(0,10);
-    display.print("R255 G0 B0");
-    display.display();
-    /*
-      Kết thúc phần người dùng build code tại đây
-    */
-    Wire.begin(8,18);
-    led.begin();
-    led.setBrightness(50);
-    // led.setPixelColor(0, led.Color(255, 0, 255));
-    // led.show();  
-    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-      led.setPixelColor(0, led.Color(255, 0, 0));
-      led.show();
-      Serial.println("OLED fail!");
-      while (1);
+    display.print("Conecting WiFi");
+    // demwf chưa được khai báo trong source gốc, giữ nguyên logic ban đầu
+    static int demwf = 0;
+    if(demwf < 80) {
+      display.setCursor(demwf,10);
+      display.print(".");
+      Serial.println(".");
     }
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.printf("He thong dang \nkhoi dong...");
-    display.display();
-    delay(1000);
-    pinMode(LED,OUTPUT);
-    digitalWrite(LED,0);
-    Serial.begin(115200);
-    Serial.println("He thong dang khoi dong...");
-    display.display();
-    display.clearDisplay();
-    WiFi.begin(ssid,pass);
-    while (WiFi.status() != WL_CONNECTED) {
-      led.setPixelColor(0, led.Color(255, 0, 255));
-      led.show();
-      Serial.println("dang khoi dong WiFi...");
-      display.setCursor(0,0);
-      display.print("Conecting WiFi");
-      // (đoạn code hiện có giữ nguyên)
-      digitalWrite(LED,1);
-      delay(300);
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
     }
-    digitalWrite(LED,0);
-    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-    config.database_url = DATABASE_URL;
-    config.signer.tokens.legacy_token = DATABASE_SECRET;
-    Firebase.reconnectWiFi(true);
-    fbdo.setBSSLBufferSize(512, 512);
-    Firebase.begin(&config, &auth);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 30);
-    display.println("XIN CHAO CAC BAN");
+    demwf+=5;
     display.display();
+    digitalWrite(LED,1);
     delay(300);
-    display.clearDisplay();
-    led.setPixelColor(0, led.Color(0, 255, 0));
-    led.show();
+  }
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 30);
+  display.println("XIN CHAO CAC BAN");
+  display.display();
+  delay(300);
+  display.clearDisplay();
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+
+  // Khởi tạo DHT11
+  dht.begin();
 }
 
 void loop() {
-    if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
-    if(checkupdate == 1) {
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setCursor(0, 0);
-      display.print("UPDATE OTA");
-      display.display();
-      getupdate();
-    }
-    /*
-      Xây dựng cơ chế xử lý của bạn tại đây
-    */
-    static unsigned long lastChange = 0;
-    if (millis() - lastChange > 2000) {
-        lastChange = millis();
-        // Chuyển sang màu tiếp theo
-        currentColor = (currentColor + 1) % 6;
-        led.setPixelColor(0, ledColors[currentColor]);
-        led.show();
+  if(Firebase.getInt(fbdo, "/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  // Đọc giá trị từ DHT11
+  float h = dht.readHumidity();
+  float t = dht.readTemperature(); // Độ C
 
-        // Lấy giá trị RGB từ màu hiện tại
-        uint32_t col = ledColors[currentColor];
-        uint8_t r = (col >> 16) & 0xFF;
-        uint8_t g = (col >> 8) & 0xFF;
-        uint8_t b = col & 0xFF;
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
 
-        // Hiển thị lên OLED
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(SSD1306_WHITE);
-        display.setCursor(0,0);
-        display.print("LED Color:");
-        display.setCursor(0,10);
-        display.print("R"); display.print(r);
-        display.print(" G"); display.print(g);
-        display.print(" B"); display.print(b);
-        display.display();
-    }
-    // (các xử lý khác nếu có)
-    /*
-      Kết thúc phần xử lý người dùng tại đây
-    */
+  // Đổi màu LED RGB dựa trên nhiệt độ
+  if (t > 32.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+  }
+  led.show();
+
+  // Hiển thị nhiệt độ và độ ẩm lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.printf("Nhiiet do: %.1f C", t);
+  display.setCursor(0, 20);
+  display.printf("Do am: %.1f %%", h);
+  display.display();
+
+  // Optional: in ra Serial
+  Serial.printf("Nhiệt độ: %.1f C, Độ ẩm: %.1f %%\n", t, h);
+
+  delay(2000); // Cập nhật mỗi 2 giây
 }
