@@ -153,7 +153,9 @@ void getupdate()
 }
 
 void setup() {
-  // Người dùng build code tại đây
+  /*
+    Người dùng build code tại đây
+  */
   Wire.begin(8,18);
   led.begin();
   led.setBrightness(50);
@@ -169,7 +171,7 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  display.printf("He thong dang khoi dong...");
+  display.printf("He thong dang \nkhoi dong...");
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
@@ -227,19 +229,7 @@ void loop() {
     display.display();
     getupdate();
   }
-
-  // Xây dựng cơ chế xử lý của bạn tại đây
-  static unsigned long lastToggle = 0;
-  static bool ledState = false;
-  if (millis() - lastToggle >= 2000) {
-    lastToggle = millis();
-    ledState = !ledState;
-    digitalWrite(LED, ledState ? HIGH : LOW);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.print("LED: ");
-    display.print(ledState ? "ON" : "OFF");
-    display.display();
-  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
 }
