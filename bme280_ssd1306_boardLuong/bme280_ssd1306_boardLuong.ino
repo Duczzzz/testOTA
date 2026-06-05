@@ -1,1 +1,1 @@
-// Đang sử dụng chế độ lập trình nhúng cho nền tảng NukeDashboard (ESP32)
+const char* model = "GPT-4o";
