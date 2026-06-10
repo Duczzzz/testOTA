@@ -13,7 +13,9 @@
 // Oled tft SCL chân 12
 // DHT chân 11
 // Điều khiển driver động cơ chân 16 và 15
-
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -55,27 +57,21 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// ----- USER DEFINITIONS -----
-const int btnPin = 4;                 // Pin nút nhấn SW8
-int btnState = HIGH;
-int lastBtnState = HIGH;
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50;
-
-int colorIndex = 0;
+//----- USER VARIABLES -----
+const int BTN_SW8 = 10;
 const uint32_t colors[4] = {
   0xFF0000, // Red
   0x00FF00, // Green
   0x0000FF, // Blue
   0xFFFF00  // Yellow
 };
-const char* colorNames[4] = {
-  "Red",
-  "Green",
-  "Blue",
-  "Yellow"
-};
-// ----------------------------
+const char* colorNames[4] = {"Red","Green","Blue","Yellow"};
+int colorIndex = 0;
+
+bool lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
+//-------------------------
 
 void getupdate()
 {
@@ -104,7 +100,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -175,12 +172,15 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo I2C, LED, OLED và BME280 (giữ nguyên)
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.setPixelColor(0, colors[colorIndex]); // màu khởi đầu
   led.show();  
+  
+  // OLED init
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -190,6 +190,8 @@ void setup() {
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
+  
+  // BME280 init
   if (!bme.begin(0x76,&I2C_BME)) {
     display.clearDisplay();
     Serial.println("Không tìm thấy BME280!");
@@ -204,8 +206,15 @@ void setup() {
   display.setTextColor(SSD1306_WHITE);
   display.display();
   delay(1000);
+  
+  // Cấu hình nút nhấn SW8
+  pinMode(BTN_SW8, INPUT_PULLUP);
+  
+  // LED status pin
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  
+  // Serial & WiFi
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -234,7 +243,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -244,18 +255,14 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // ----- USER SETUP -----
-  pinMode(btnPin, INPUT_PULLUP);
-  // Hiển thị màu mặc định ban đầu
-  led.setPixelColor(0, colors[colorIndex]);
-  led.show();
+  
+  // Hiển thị màu hiện tại trên OLED
   display.clearDisplay();
   display.setCursor(0,0);
-  display.print("Mau: ");
+  display.print("Mau hien tai:");
+  display.setCursor(0,20);
   display.print(colorNames[colorIndex]);
   display.display();
-  // -----------------------
 }
 
 void loop() {
@@ -271,27 +278,27 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // ----- USER LOOP -----
-  int reading = digitalRead(btnPin);
-  if (reading != lastBtnState) {
+  // Đọc nút nhấn SW8 với debounce
+  bool reading = digitalRead(BTN_SW8);
+  if (reading != lastButtonState) {
     lastDebounceTime = millis();
   }
   if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != btnState) {
-      btnState = reading;
-      if (btnState == LOW) {
-        // Nút được nhấn, chuyển màu
+    if (reading != lastButtonState) {
+      lastButtonState = reading;
+      if (reading == LOW) { // nút được nhấn
         colorIndex = (colorIndex + 1) % 4;
         led.setPixelColor(0, colors[colorIndex]);
         led.show();
+        // Cập nhật OLED
         display.clearDisplay();
         display.setCursor(0,0);
-        display.print("Mau: ");
+        display.print("Mau hien tai:");
+        display.setCursor(0,20);
         display.print(colorNames[colorIndex]);
         display.display();
       }
     }
   }
-  lastBtnState = reading;
-  // -----------------------
+  delay(10);
 }
