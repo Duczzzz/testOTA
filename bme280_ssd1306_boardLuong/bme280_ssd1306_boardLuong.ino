@@ -54,6 +54,29 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+// ----- USER DEFINITIONS -----
+const int btnPin = 4;                 // Pin nút nhấn SW8
+int btnState = HIGH;
+int lastBtnState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
+
+int colorIndex = 0;
+const uint32_t colors[4] = {
+  0xFF0000, // Red
+  0x00FF00, // Green
+  0x0000FF, // Blue
+  0xFFFF00  // Yellow
+};
+const char* colorNames[4] = {
+  "Red",
+  "Green",
+  "Blue",
+  "Yellow"
+};
+// ----------------------------
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -152,7 +175,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Không cần thêm code ở đây vì phần khởi tạo đã được thực hiện phía dưới.
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -222,6 +244,18 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // ----- USER SETUP -----
+  pinMode(btnPin, INPUT_PULLUP);
+  // Hiển thị màu mặc định ban đầu
+  led.setPixelColor(0, colors[colorIndex]);
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colorNames[colorIndex]);
+  display.display();
+  // -----------------------
 }
 
 void loop() {
@@ -237,23 +271,27 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();   // Độ C
-  float humidity = bme.readHumidity();         // %
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("Nhiiet do: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("Do am: %.1f %%", humidity);
-  display.display();
-
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255,0,0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0,255,0)); // Xanh lá
+  // ----- USER LOOP -----
+  int reading = digitalRead(btnPin);
+  if (reading != lastBtnState) {
+    lastDebounceTime = millis();
   }
-  led.show();
-
-  delay(2000); // Cập nhật mỗi 2 giây
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != btnState) {
+      btnState = reading;
+      if (btnState == LOW) {
+        // Nút được nhấn, chuyển màu
+        colorIndex = (colorIndex + 1) % 4;
+        led.setPixelColor(0, colors[colorIndex]);
+        led.show();
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print("Mau: ");
+        display.print(colorNames[colorIndex]);
+        display.display();
+      }
+    }
+  }
+  lastBtnState = reading;
+  // -----------------------
 }
