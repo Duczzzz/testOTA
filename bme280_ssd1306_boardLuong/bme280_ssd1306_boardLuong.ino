@@ -54,9 +54,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-unsigned long lastDisplay = 0;
-const unsigned long displayInterval = 2000;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -155,6 +152,7 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Không cần thêm code ở đây vì phần khởi tạo đã được thực hiện phía dưới.
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -214,7 +212,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -239,24 +237,23 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  if (millis() - lastDisplay >= displayInterval) {
-    lastDisplay = millis();
-    float temperature = bme.readTemperature(); // °C
-    float humidity = bme.readHumidity();      // %
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("Nhiet do: ");
-    display.print(temperature,1);
-    display.print(" C");
-    display.setCursor(0,20);
-    display.print("Do am:   ");
-    display.print(humidity,1);
-    display.print(" %");
-    display.display();
-    Serial.print("Nhiet do: ");
-    Serial.print(temperature,1);
-    Serial.print(" C, Do am: ");
-    Serial.print(humidity,1);
-    Serial.println(" %");
+  float temperature = bme.readTemperature();   // Độ C
+  float humidity = bme.readHumidity();         // %
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.printf("Nhiiet do: %.1f C", temperature);
+  display.setCursor(0,10);
+  display.printf("Do am: %.1f %%", humidity);
+  display.display();
+
+  if (temperature > 36.0) {
+    led.setPixelColor(0, led.Color(255,0,0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0,255,0)); // Xanh lá
   }
+  led.show();
+
+  delay(2000); // Cập nhật mỗi 2 giây
 }
