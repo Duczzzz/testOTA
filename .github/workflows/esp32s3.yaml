@@ -17,6 +17,7 @@ jobs:
         run: |
           USER=$(echo "${{ github.event.head_commit.message }}" | cut -d':' -f2)
           echo "USER=$USER" >> $GITHUB_ENV
+          echo $USER
           
       - name: Install Arduino CLI
         run: |
