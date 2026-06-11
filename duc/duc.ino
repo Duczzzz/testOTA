@@ -58,23 +58,10 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-//----- biến và mảng cho đổi màu LED RGB -----
-uint32_t rgbColors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFF00FF, // Magenta
-  0x00FFFF, // Cyan
-  0xFFFF00, // Yellow
-  0xFFFFFF, // White
-  0x000000  // Off
-};
-const char* rgbNames[] = {
-  "Red","Green","Blue","Magenta","Cyan","Yellow","White","Off"
-};
-int rgbIndex = 0;
-unsigned long lastRgbChange = 0;
-const unsigned long rgbInterval = 2000; // 2 giây
+// Biến cho việc nhấp nháy LED
+bool ledState = false;
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000; // 2 giây
 
 void getupdate()
 {
@@ -107,7 +94,6 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
@@ -173,12 +159,20 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo trạng thái LED và hiển thị ban đầu
+  ledState = false;
+  digitalWrite(LED, ledState);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
+
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Thiết lập màu ban đầu
-  led.setPixelColor(0, led.Color(255,0,0));
+  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -243,13 +237,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Hiển thị màu LED hiện tại lên OLED
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mau LED: ");
-  display.print(rgbNames[rgbIndex]);
-  display.display();
 }
 
 void loop() {
@@ -262,28 +249,22 @@ void loop() {
     display.display();
     getupdate();
   }
-
-  //----- Đổi màu LED RGB mỗi rgbInterval ms và hiển thị màu lên OLED -----
-  unsigned long now = millis();
-  if (now - lastRgbChange >= rgbInterval) {
-    lastRgbChange = now;
-    rgbIndex = (rgbIndex + 1) % (sizeof(rgbColors)/sizeof(rgbColors[0]));
-    uint32_t c = rgbColors[rgbIndex];
-    uint8_t r = (c >> 16) & 0xFF;
-    uint8_t g = (c >> 8) & 0xFF;
-    uint8_t b = c & 0xFF;
-    led.setPixelColor(0, led.Color(r, g, b));
-    led.show();
-
-    // Cập nhật màn hình OLED
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("Mau LED: ");
-    display.print(rgbNames[rgbIndex]);
-    display.display();
-  }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    if (ledState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
+    display.display();
+  }
 }
