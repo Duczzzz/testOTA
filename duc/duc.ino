@@ -35,6 +35,7 @@ const char* pass = "14042004";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+#define BTN_SW8 10          // GPIO10 cho nút SW8
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,10 +59,13 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// biến cho việc nhấp nháy LED
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000; // 2 giây
-bool ledState = false;
+// ---- Biến cho LED RGB và nút SW8 ----
+const uint32_t colors[4] = {0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00}; // Đỏ, Xanh lá, Xanh dương, Vàng
+const char* colorNames[4] = {"Do", "Xanh", "Xanh Duong", "Vang"};
+int colorIndex = 0;
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
 
 void getupdate()
 {
@@ -94,7 +98,6 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
@@ -164,6 +167,26 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
+  // Khởi tạo nút SW8
+  pinMode(BTN_SW8, INPUT_PULLUP);
+  // Đặt màu đầu tiên cho LED RGB
+  led.setPixelColor(0, colors[colorIndex]);
+  led.show();
+  // Hiển thị màu hiện tại trên OLED
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    Serial.println("OLED fail!");
+    while (1);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colorNames[colorIndex]);
+  display.display();
+  // Các khởi tạo còn lại
   led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
@@ -244,16 +267,24 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED, ledState);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.print("LED ");
-    display.print(ledState ? "ON" : "OFF");
-    display.display();
+  // Đọc và debounce nút SW8
+  int reading = digitalRead(BTN_SW8);
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
   }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading == LOW && lastButtonState == HIGH) {
+      // Nút đã được nhấn
+      colorIndex = (colorIndex + 1) % 4;
+      led.setPixelColor(0, colors[colorIndex]);
+      led.show();
+      // Cập nhật OLED
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("Mau: ");
+      display.print(colorNames[colorIndex]);
+      display.display();
+    }
+  }
+  lastButtonState = reading;
 }
