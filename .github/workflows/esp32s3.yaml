@@ -47,7 +47,7 @@ jobs:
             --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,DebugLevel=none,PSRAM=opi \
             --build-property "compiler.cpp.extra_flags=-Os" \
             --output-dir build \
-            bme280_ssd1306_boardLuong/bme280_ssd1306_boardLuong.ino
+            duc/duc.ino
 
       - name: Copy BIN
         run: |
