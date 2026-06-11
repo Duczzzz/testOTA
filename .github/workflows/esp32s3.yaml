@@ -58,7 +58,7 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          git add firmware.ino.bin
+          git add firmware_duc.ino.bin
           git commit -m "update firmware bin" || echo "No changes"
 
           git push
