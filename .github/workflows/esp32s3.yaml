@@ -26,14 +26,13 @@ jobs:
           https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+          arduino-cli board listall | grep S3
       - name: Install Libraries
         run: |
           arduino-cli lib update-index
       
           arduino-cli lib install "Adafruit Unified Sensor"
           arduino-cli lib install "Adafruit BME280 Library"
-          arduino-cli lib install "Adafruit BMP280 Library"
           arduino-cli lib install "Firebase ESP32 Client"
           arduino-cli lib install "Adafruit NeoPixel"
           arduino-cli lib install "Adafruit GFX Library"
