@@ -58,45 +58,24 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-//--- GPIO và màu LED ---
-const int buttonPin = 10;               // SW8
-int currentColorIndex = 0;
-int lastButtonState = HIGH;
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50;
-
-struct ColorInfo {
-  const char* name;
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
+//----- biến và mảng cho đổi màu LED RGB -----
+uint32_t rgbColors[] = {
+  0xFF0000, // Red
+  0x00FF00, // Green
+  0x0000FF, // Blue
+  0xFF00FF, // Magenta
+  0x00FFFF, // Cyan
+  0xFFFF00, // Yellow
+  0xFFFFFF, // White
+  0x000000  // Off
 };
-
-ColorInfo colors[] = {
-  {"OFF",0,0,0},
-  {"RED",255,0,0},
-  {"GREEN",0,255,0},
-  {"BLUE",0,0,255},
-  {"YELLOW",255,255,0},
-  {"CYAN",0,255,255},
-  {"MAGENTA",255,0,255},
-  {"WHITE",255,255,255}
+const char* rgbNames[] = {
+  "Red","Green","Blue","Magenta","Cyan","Yellow","White","Off"
 };
-const int colorCount = sizeof(colors) / sizeof(colors[0]);
+int rgbIndex = 0;
+unsigned long lastRgbChange = 0;
+const unsigned long rgbInterval = 2000; // 2 giây
 
-void applyColor(int idx) {
-  led.setPixelColor(0, led.Color(colors[idx].r, colors[idx].g, colors[idx].b));
-  led.show();
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colors[idx].name);
-  display.display();
-}
-
-//--- OTA Update ---
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -190,7 +169,6 @@ void getupdate()
     http.end();
 }
 
-//--- Setup ---
 void setup() {
   /*
     Người dùng build code tại đây
@@ -199,10 +177,9 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  pinMode(buttonPin, INPUT_PULLUP);
-  currentColorIndex = 0;
-  applyColor(currentColorIndex);
-  // Các khởi tạo hệ thống chung
+  // Thiết lập màu ban đầu
+  led.setPixelColor(0, led.Color(255,0,0));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -225,4 +202,88 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
-  delay
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
+  WiFi.begin(ssid,pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    led.setPixelColor(0, led.Color(255, 0, 255));
+    led.show();
+    Serial.println("dang khoi dong WiFi...");
+    display.setCursor(10,0);
+    display.print("Dang ket noi WiFi");
+    display.setCursor(0,20);
+    display.printf("SSID: %s",ssid);
+    if(demwf < 80) {
+      display.setCursor(demwf,30);
+      display.print(".");
+      Serial0.println(".");
+    }
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
+    }
+    demwf+=5;
+    display.display();
+    digitalWrite(LED,1);
+    delay(300);
+  }
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+  display.clearDisplay();
+  display.display();
+
+  // Hiển thị màu LED hiện tại lên OLED
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau LED: ");
+  display.print(rgbNames[rgbIndex]);
+  display.display();
+}
+
+void loop() {
+  if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+
+  //----- Đổi màu LED RGB mỗi rgbInterval ms và hiển thị màu lên OLED -----
+  unsigned long now = millis();
+  if (now - lastRgbChange >= rgbInterval) {
+    lastRgbChange = now;
+    rgbIndex = (rgbIndex + 1) % (sizeof(rgbColors)/sizeof(rgbColors[0]));
+    uint32_t c = rgbColors[rgbIndex];
+    uint8_t r = (c >> 16) & 0xFF;
+    uint8_t g = (c >> 8) & 0xFF;
+    uint8_t b = c & 0xFF;
+    led.setPixelColor(0, led.Color(r, g, b));
+    led.show();
+
+    // Cập nhật màn hình OLED
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("Mau LED: ");
+    display.print(rgbNames[rgbIndex]);
+    display.display();
+  }
+
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+}
