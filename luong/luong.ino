@@ -58,54 +58,10 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-//----- Định nghĩa cho nút và màu LED -----
-const int BTN_SW8 = 10;   // Next color
-const int BTN_SW9 = 12;   // Not used (reserved)
-const int BTN_SW11 = 14;  // Not used (reserved)
-
-struct ColorInfo {
-  uint32_t rgb;      // 0xRRGGBB
-  const char* name;
-};
-
-ColorInfo colors[] = {
-  {0xFF0000, "Red"},
-  {0x00FF00, "Green"},
-  {0x0000FF, "Blue"},
-  {0xFFFF00, "Yellow"},
-  {0x00FFFF, "Cyan"},
-  {0xFF00FF, "Magenta"},
-  {0xFFFFFF, "White"},
-  {0x000000, "Off"}
-};
-const uint8_t COLOR_COUNT = sizeof(colors) / sizeof(colors[0]);
-uint8_t currentColorIdx = 0;
-unsigned long lastBtnTime = 0;
-const unsigned long DEBOUNCE_MS = 200;
-
-void displayCurrentColor() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.print("Mau LED: ");
-  display.println(colors[currentColorIdx].name);
-  display.setCursor(0, 20);
-  uint32_t c = colors[currentColorIdx].rgb;
-  uint8_t r = (c >> 16) & 0xFF;
-  uint8_t g = (c >> 8) & 0xFF;
-  uint8_t b = c & 0xFF;
-  display.printf("R:%d G:%d B:%d", r, g, b);
-  display.display();
-}
-
-void setLedColor(uint32_t rgb) {
-  uint8_t r = (rgb >> 16) & 0xFF;
-  uint8_t g = (rgb >> 8) & 0xFF;
-  uint8_t b = rgb & 0xFF;
-  led.setPixelColor(0, led.Color(r, g, b));
-  led.show();
-}
+// Biến cho việc nhấp nháy LED
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000; // 2 giây
+bool ledState = false;
 
 void getupdate()
 {
@@ -138,11 +94,17 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
+
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
               display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(2, 32, (percent * 116) / 100, 6, SSD1306_WHITE);
+              display.fillRect(
+                    2,
+                    32,
+                    (percent * 116) / 100,
+                    6,
+                    SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
@@ -198,19 +160,12 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Khởi tạo I2C, LED, OLED, BME280 (đã có trong code gốc)
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Khởi tạo nút
-  pinMode(BTN_SW8, INPUT_PULLUP);
-  pinMode(BTN_SW9, INPUT_PULLUP);
-  pinMode(BTN_SW11, INPUT_PULLUP);
-  // Thiết lập màu ban đầu
-  setLedColor(colors[currentColorIdx].rgb);
-  displayCurrentColor();
-  // Các khởi tạo còn lại (không thay đổi)
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -274,6 +229,14 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo trạng thái LED ban đầu và hiển thị lên OLED
+  digitalWrite(LED, LOW);
+  ledState = false;
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
 }
 
 void loop() {
@@ -289,5 +252,18 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Kiểm tra nút SW8 để chuyển sang màu tiếp theo
-  if (digitalRead(BTN_SW8) == LOW && (millis() - lastBtnTime)
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState ? HIGH : LOW);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    if (ledState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
+    display.display();
+  }
+}
