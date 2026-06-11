@@ -57,6 +57,9 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+bool ledState = false;
+unsigned long lastToggle = 0;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -154,16 +157,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Khởi tạo I2C, LED RGB, OLED, BME280 đã có ở trên
-  // Đặt trạng thái LED chân 2 ban đầu OFF và hiển thị lên OLED
-  digitalWrite(LED, LOW);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("LED: OFF");
-  display.display();
-  
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -195,6 +188,14 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  // Khởi tạo trạng thái LED và hiển thị ban đầu
+  ledState = false;
+  digitalWrite(LED, ledState);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
+
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -248,19 +249,15 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Nhấp nháy LED chân 2 mỗi 2 giây và cập nhật trạng thái lên OLED
-  static unsigned long prevTime = 0;
-  static bool ledState = false;
-  if (millis() - prevTime >= 2000) {
+  unsigned long current = millis();
+  if (current - lastToggle >= 2000) {
     ledState = !ledState;
     digitalWrite(LED, ledState);
     display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
     display.setCursor(0,0);
-    display.print("LED: ");
+    display.print("LED ");
     display.print(ledState ? "ON" : "OFF");
     display.display();
-    prevTime = millis();
+    lastToggle = current;
   }
 }
