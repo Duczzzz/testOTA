@@ -58,29 +58,45 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// Mảng màu và tên màu cho LED RGB
-uint32_t rgbColors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00, // Yellow
-  0x00FFFF, // Cyan
-  0xFF00FF, // Magenta
-  0xFFFFFF  // White
-};
-const char* rgbNames[] = {
-  "Red",
-  "Green",
-  "Blue",
-  "Yellow",
-  "Cyan",
-  "Magenta",
-  "White"
-};
-int colorIndex = 0;
-unsigned long lastColorChange = 0;
-const unsigned long colorInterval = 2000; // 2 giây
+//--- GPIO và màu LED ---
+const int buttonPin = 10;               // SW8
+int currentColorIndex = 0;
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
 
+struct ColorInfo {
+  const char* name;
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+};
+
+ColorInfo colors[] = {
+  {"OFF",0,0,0},
+  {"RED",255,0,0},
+  {"GREEN",0,255,0},
+  {"BLUE",0,0,255},
+  {"YELLOW",255,255,0},
+  {"CYAN",0,255,255},
+  {"MAGENTA",255,0,255},
+  {"WHITE",255,255,255}
+};
+const int colorCount = sizeof(colors) / sizeof(colors[0]);
+
+void applyColor(int idx) {
+  led.setPixelColor(0, led.Color(colors[idx].r, colors[idx].g, colors[idx].b));
+  led.show();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colors[idx].name);
+  display.display();
+}
+
+//--- OTA Update ---
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -174,6 +190,7 @@ void getupdate()
     http.end();
 }
 
+//--- Setup ---
 void setup() {
   /*
     Người dùng build code tại đây
@@ -182,9 +199,10 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Đặt màu ban đầu cho LED RGB
-  led.setPixelColor(0, rgbColors[colorIndex]);
-  led.show();  
+  pinMode(buttonPin, INPUT_PULLUP);
+  currentColorIndex = 0;
+  applyColor(currentColorIndex);
+  // Các khởi tạo hệ thống chung
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -207,74 +225,4 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
-  delay(1000);
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
-  Serial.begin(115200);
-  Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
-  WiFi.begin(ssid,pass);
-  while (WiFi.status() != WL_CONNECTED) {
-    led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();
-    Serial.println("dang khoi dong WiFi...");
-    display.setCursor(10,0);
-    display.print("Dang ket noi WiFi");
-    display.setCursor(0,20);
-    display.printf("SSID: %s",ssid);
-    if(demwf < 80) {
-      display.setCursor(demwf,30);
-      display.print(".");
-      Serial0.println(".");
-    }
-    else if(demwf > 80) {
-      display.clearDisplay();
-      demwf = 0;
-    }
-    demwf+=5;
-    display.display();
-    digitalWrite(LED,1);
-    delay(300);
-  }
-  digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-  config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = DATABASE_SECRET;
-  Firebase.reconnectWiFi(true);
-  fbdo.setBSSLBufferSize(512, 512);
-  Firebase.begin(&config, &auth);
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
-  display.clearDisplay();
-  display.display();
-}
-
-void loop() {
-  if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  // Thay đổi màu LED RGB mỗi 2 giây và hiển thị tên màu lên OLED
-  unsigned long now = millis();
-  if (now - lastColorChange >= colorInterval) {
-    lastColorChange = now;
-    colorIndex = (colorIndex + 1) % (sizeof(rgbColors)/sizeof(rgbColors[0]));
-    led.setPixelColor(0, rgbColors[colorIndex]);
-    led.show();
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("LED Color:");
-    display.setCursor(0,20);
-    display.print(rgbNames[colorIndex]);
-    display.display();
-  }
-}
+  delay
