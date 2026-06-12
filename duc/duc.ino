@@ -58,27 +58,31 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
+//--- Định nghĩa nút và màu sắc ---
 #define BTN_SW8 10
 #define BTN_SW9 12
 #define BTN_SW11 14
 
-struct ColorInfo {
-  uint32_t value;
-  const char* name;
+const uint32_t colorVals[] = {
+  0xFF0000, // Red
+  0x00FF00, // Green
+  0x0000FF, // Blue
+  0xFFFF00, // Yellow
+  0xFF00FF  // Purple
 };
-
-ColorInfo colors[] = {
-  {0xFF0000, "Red"},
-  {0x00FF00, "Green"},
-  {0x0000FF, "Blue"},
-  {0xFFFF00, "Yellow"},
-  {0xFF00FF, "Magenta"},
-  {0x00FFFF, "Cyan"},
-  {0xFFFFFF, "White"}
+const char* colorNames[] = {
+  "Red",
+  "Green",
+  "Blue",
+  "Yellow",
+  "Purple"
 };
-const uint8_t COLOR_COUNT = sizeof(colors) / sizeof(colors[0]);
-uint8_t currentColorIdx = 0;
+const int numColors = sizeof(colorVals) / sizeof(colorVals[0]);
+int curColorIdx = 0;
+unsigned long lastDebounce = 0;
+const unsigned long debounceDelay = 200;
 
+//--- OTA function (giữ nguyên) ---
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -172,36 +176,20 @@ void getupdate()
     http.end();
 }
 
+//--- Setup ---
 void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Khởi tạo I2C, LED, OLED, BME280 (đã có trong phần trên)
-  // Cấu hình các nút nhấn
-  pinMode(BTN_SW8, INPUT_PULLUP);
-  pinMode(BTN_SW9, INPUT_PULLUP);
-  pinMode(BTN_SW11, INPUT_PULLUP);
-
-  // Đặt màu LED mặc định và hiển thị lên OLED
-  led.setPixelColor(0, colors[currentColorIdx].value);
-  led.show();
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Mau LED: ");
-  display.print(colors[currentColorIdx].name);
-  display.display();
-  /*
-    Người dùng build code tại đây
-  */
+  // Khởi tạo I2C, LED, OLED, BME280 (giữ nguyên)
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
+  // Đặt màu ban đầu
+  led.setPixelColor(0, colorVals[curColorIdx]);
   led.show();  
+  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -231,6 +219,13 @@ void setup() {
   Serial.println("He thong dang khoi dong...");
   display.display();
   display.clearDisplay();
+
+  // Khởi tạo nút nhấn
+  pinMode(BTN_SW8, INPUT_PULLUP);
+  pinMode(BTN_SW9, INPUT_PULLUP);
+  pinMode(BTN_SW11, INPUT_PULLUP);
+
+  // Kết nối WiFi
   WiFi.begin(ssid,pass);
   while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
@@ -265,8 +260,17 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Hiển thị màu hiện tại lên OLED
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau hien tai:");
+  display.setCursor(0,20);
+  display.print(colorNames[curColorIdx]);
+  display.display();
 }
 
+//--- Loop ---
 void loop() {
   if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
   if(checkupdate == 1) {
@@ -280,29 +284,41 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long lastDebounce = 0;
-  const unsigned long debounceDelay = 200;
-
-  if (millis() - lastDebounce > debounceDelay) {
-    if (digitalRead(BTN_SW8) == LOW) {
-      // Chuyển sang màu tiếp theo
-      currentColorIdx = (currentColorIdx + 1) % COLOR_COUNT;
-      led.setPixelColor(0, colors[currentColorIdx].value);
-      led.show();
-
-      display.clearDisplay();
-      display.setTextSize(1);
-      display.setTextColor(SSD1306_WHITE);
-      display.setCursor(0,0);
-      display.print("Mau LED: ");
-      display.print(colors[currentColorIdx].name);
-      display.display();
-
-      lastDebounce = millis();
-    }
-    // Nếu muốn dùng các nút khác cho chức năng khác, có thể thêm ở đây
+  // Đọc nút SW8: chuyển sang màu tiếp theo
+  if (digitalRead(BTN_SW8) == LOW && (millis() - lastDebounce) > debounceDelay) {
+    lastDebounce = millis();
+    curColorIdx = (curColorIdx + 1) % numColors;
+    led.setPixelColor(0, colorVals[curColorIdx]);
+    led.show();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("Mau hien tai:");
+    display.setCursor(0,20);
+    display.print(colorNames[curColorIdx]);
+    display.display();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
+  // Đọc nút SW9: chuyển sang màu trước
+  if (digitalRead(BTN_SW9) == LOW && (millis() - lastDebounce) > debounceDelay) {
+    lastDebounce = millis();
+    curColorIdx = (curColorIdx - 1 + numColors) % numColors;
+    led.setPixelColor(0, colorVals[curColorIdx]);
+    led.show();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("Mau hien tai:");
+    display.setCursor(0,20);
+    display.print(colorNames[curColorIdx]);
+    display.display();
+  }
+  // Đọc nút SW11: tắt LED (màu đen) và hiển thị "Tat"
+  if (digitalRead(BTN_SW11) == LOW && (millis() - lastDebounce) > debounceDelay) {
+    lastDebounce = millis();
+    led.setPixelColor(0, led.Color(0,0,0));
+    led.show();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("LED tat");
+    display.display();
+  }
+  delay(10);
 }
