@@ -150,27 +150,6 @@ void getupdate()
     http.end();
 }
 
-// Mảng màu và tên màu cho LED RGB
-const uint32_t rgbColors[] = {
-    0xFF0000, // Red
-    0x00FF00, // Green
-    0x0000FF, // Blue
-    0xFFFF00, // Yellow
-    0x00FFFF, // Cyan
-    0xFF00FF, // Magenta
-    0xFFFFFF  // White
-};
-const char* rgbNames[] = {
-    "Red",
-    "Green",
-    "Blue",
-    "Yellow",
-    "Cyan",
-    "Magenta",
-    "White"
-};
-const int rgbColorCount = sizeof(rgbColors) / sizeof(rgbColors[0]);
-
 void setup() {
   /*
     Người dùng build code tại đây
@@ -179,8 +158,7 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Khởi tạo LED với màu đầu tiên
-  led.setPixelColor(0, rgbColors[0]);
+  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -260,29 +238,25 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long lastChange = 0;
-  const unsigned long interval = 2000; // 2 giây
-  static int colorIdx = 0;
+  float temperature = bme.readTemperature();   // °C
+  float humidity = bme.readHumidity();         // %
 
-  if (millis() - lastChange >= interval) {
-    // Cập nhật màu LED
-    led.setPixelColor(0, rgbColors[colorIdx]);
-    led.show();
+  // Hiển thị lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.printf("Nhiiet do: %.1f C", temperature);
+  display.setCursor(0,10);
+  display.printf("Do am: %.1f %%", humidity);
+  display.display();
 
-    // Hiển thị màu trên OLED
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("Mau LED: ");
-    display.print(rgbNames[colorIdx]);
-    display.setCursor(0,20);
-    uint8_t r = (rgbColors[colorIdx] >> 16) & 0xFF;
-    uint8_t g = (rgbColors[colorIdx] >> 8) & 0xFF;
-    uint8_t b = rgbColors[colorIdx] & 0xFF;
-    display.printf("RGB(%d,%d,%d)", r, g, b);
-    display.display();
-
-    // Chu kỳ màu tiếp theo
-    colorIdx = (colorIdx + 1) % rgbColorCount;
-    lastChange = millis();
+  // Đổi màu LED RGB dựa trên nhiệt độ
+  if (temperature > 36.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
   }
+  led.show();
+
+  delay(1000);
 }
