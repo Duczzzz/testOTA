@@ -4,6 +4,7 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
+// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB chân 9
@@ -27,6 +28,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
+#include <DHT.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
@@ -57,6 +59,11 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -179,6 +186,9 @@ void setup() {
     led.show();
     while (1);
   }
+  // Khởi động DHT11
+  dht.begin();
+
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
@@ -201,7 +211,7 @@ void setup() {
     if(demwf < 80) {
       display.setCursor(demwf,30);
       display.print(".");
-      Serial0.println(".");
+      Serial.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -238,19 +248,30 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long lastToggle = 0;
-  if (millis() - lastToggle >= 2000) {
-    lastToggle = millis();
-    // Đảo trạng thái LED
-    int state = digitalRead(LED);
-    digitalWrite(LED, !state);
-    // Cập nhật OLED
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.print("LED Pin 2: ");
-    display.print(!state ? "ON" : "OFF");
-    display.display();
+  // Đọc dữ liệu DHT11
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature(); // Celsius
+
+  // Kiểm tra lỗi đọc
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
   }
+
+  // Điều khiển LED dựa trên nhiệt độ
+  if (temperature > 32.0) {
+    digitalWrite(LED, HIGH);
+  } else {
+    digitalWrite(LED, LOW);
+  }
+
+  // Hiển thị lên OLED
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.printf("N: %.1f C", temperature);
+  display.setCursor(0,10);
+  display.printf("D: %.1f %%", humidity);
+  display.display();
+
+  delay(2000);
 }
