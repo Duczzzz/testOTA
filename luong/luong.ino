@@ -28,8 +28,8 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Su Ni";
+const char* pass = "04072009";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -230,12 +230,9 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // Khởi tạo trạng thái LED ban đầu và hiển thị lên OLED
-  digitalWrite(LED, LOW);
-  ledState = false;
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
+  // Hiển thị trạng thái LED ban đầu
+  display.setCursor(0, 40);
+  display.print("LED: OFF");
   display.display();
 }
 
@@ -256,14 +253,12 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     ledState = !ledState;
-    digitalWrite(LED, ledState ? HIGH : LOW);
-    display.clearDisplay();
-    display.setCursor(0,0);
-    if (ledState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
+    digitalWrite(LED, ledState);
+    // Cập nhật trạng thái lên OLED
+    display.fillRect(0, 40, SCREEN_WIDTH, 10, SSD1306_BLACK); // Xóa phần cũ
+    display.setCursor(0, 40);
+    display.print("LED: ");
+    display.print(ledState ? "ON " : "OFF");
     display.display();
   }
 }
