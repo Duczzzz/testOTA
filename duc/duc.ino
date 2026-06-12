@@ -57,6 +57,28 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+#define BTN_SW8 10
+#define BTN_SW9 12
+#define BTN_SW11 14
+
+struct ColorInfo {
+  uint32_t value;
+  const char* name;
+};
+
+ColorInfo colors[] = {
+  {0xFF0000, "Red"},
+  {0x00FF00, "Green"},
+  {0x0000FF, "Blue"},
+  {0xFFFF00, "Yellow"},
+  {0xFF00FF, "Magenta"},
+  {0x00FFFF, "Cyan"},
+  {0xFFFFFF, "White"}
+};
+const uint8_t COLOR_COUNT = sizeof(colors) / sizeof(colors[0]);
+uint8_t currentColorIdx = 0;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -154,6 +176,26 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo I2C, LED, OLED, BME280 (đã có trong phần trên)
+  // Cấu hình các nút nhấn
+  pinMode(BTN_SW8, INPUT_PULLUP);
+  pinMode(BTN_SW9, INPUT_PULLUP);
+  pinMode(BTN_SW11, INPUT_PULLUP);
+
+  // Đặt màu LED mặc định và hiển thị lên OLED
+  led.setPixelColor(0, colors[currentColorIdx].value);
+  led.show();
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Mau LED: ");
+  display.print(colors[currentColorIdx].name);
+  display.display();
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -238,27 +280,29 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature(); // °C
-  float humidity = bme.readHumidity();       // %
+  static unsigned long lastDebounce = 0;
+  const unsigned long debounceDelay = 200;
 
-  // Cập nhật màu LED RGB dựa trên nhiệt độ
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+  if (millis() - lastDebounce > debounceDelay) {
+    if (digitalRead(BTN_SW8) == LOW) {
+      // Chuyển sang màu tiếp theo
+      currentColorIdx = (currentColorIdx + 1) % COLOR_COUNT;
+      led.setPixelColor(0, colors[currentColorIdx].value);
+      led.show();
+
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.setCursor(0,0);
+      display.print("Mau LED: ");
+      display.print(colors[currentColorIdx].name);
+      display.display();
+
+      lastDebounce = millis();
+    }
+    // Nếu muốn dùng các nút khác cho chức năng khác, có thể thêm ở đây
   }
-  led.show();
-
-  // Hiển thị lên OLED
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print("Nhiet do: ");
-  display.print(temperature, 1);
-  display.println(" C");
-  display.print("Do am:   ");
-  display.print(humidity, 1);
-  display.println(" %");
-  display.display();
-
-  delay(1000);
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
 }
