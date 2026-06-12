@@ -4,6 +4,7 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
+// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB chân 9
@@ -27,6 +28,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
+#include <DHT.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -58,10 +60,9 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// Biến cho việc nhấp nháy LED
-bool ledState = false;
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000; // 2 giây
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 void getupdate()
 {
@@ -94,6 +95,7 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
+
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
@@ -159,15 +161,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Khởi tạo trạng thái LED và hiển thị ban đầu
-  ledState = false;
-  digitalWrite(LED, ledState);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
-
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -237,6 +230,15 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // ----- Bắt đầu phần người dùng -----
+  dht.begin();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("DHT11 Init");
+  display.display();
+  // ----- Kết thúc phần người dùng -----
 }
 
 void loop() {
@@ -252,19 +254,27 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED, ledState);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    if (ledState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
-    display.display();
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
   }
+
+  if (t > 32) {
+    led.setPixelColor(0, led.Color(255,0,0));
+  } else {
+    led.setPixelColor(0, led.Color(0,255,0));
+  }
+  led.show();
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.printf("Nhip do: %.1f C", t);
+  display.setCursor(0,10);
+  display.printf("Do am: %.1f %%", h);
+  display.display();
+
+  delay(2000);
 }
