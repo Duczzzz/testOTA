@@ -4,7 +4,6 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB chân 9
@@ -28,7 +27,6 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
-#include <DHT.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -59,11 +57,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -208,7 +201,7 @@ void setup() {
     if(demwf < 80) {
       display.setCursor(demwf,30);
       display.print(".");
-      Serial0.println(".");
+      Serial.println(".");
     }
     else if(demwf > 80) {
       display.clearDisplay();
@@ -231,14 +224,10 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // ----- Bắt đầu phần người dùng -----
-  dht.begin();
-  display.clearDisplay();
-  display.setTextSize(1);
+  // Hiển thị trạng thái LED ban đầu
   display.setCursor(0,0);
-  display.print("DHT11 Init");
+  display.print("LED OFF");
   display.display();
-  // ----- Kết thúc phần người dùng -----
 }
 
 void loop() {
@@ -251,30 +240,24 @@ void loop() {
     display.display();
     getupdate();
   }
+
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  if (isnan(h) || isnan(t)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
+  static unsigned long lastToggle = 0;
+  if (millis() - lastToggle >= 2000) {
+    // Đảo trạng thái LED
+    bool currentState = digitalRead(LED);
+    digitalWrite(LED, !currentState);
+    // Cập nhật hiển thị OLED
+    display.clearDisplay();
+    display.setCursor(0,0);
+    if (!currentState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
+    display.display();
+    lastToggle = millis();
   }
-
-  if (t > 32) {
-    led.setPixelColor(0, led.Color(255,0,0));
-  } else {
-    led.setPixelColor(0, led.Color(0,255,0));
-  }
-  led.show();
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("Nhip do: %.1f C", t);
-  display.setCursor(0,10);
-  display.printf("Do am: %.1f %%", h);
-  display.display();
-
-  delay(2000);
 }
