@@ -57,6 +57,8 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+uint16_t hue = 0; // biến hue cho hiệu ứng cầu vồng
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -223,6 +225,13 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Hiển thị tên hiệu ứng trên OLED
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Rainbow");
+  display.display();
 }
 
 void loop() {
@@ -238,25 +247,17 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();   // °C
-  float humidity = bme.readHumidity();         // %
-
-  // Hiển thị lên OLED
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("Nhiiet do: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("Do am: %.1f %%", humidity);
-  display.display();
-
-  // Đổi màu LED RGB dựa trên nhiệt độ
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
-  }
+  // Hiệu ứng cầu vồng cho LED RGB
+  hue += 5;
+  if (hue > 65535) hue = 0;
+  led.setPixelColor(0, led.ColorHSV(hue));
   led.show();
 
-  delay(1000);
+  // Cập nhật lại tên hiệu ứng (nếu muốn xoá các phần cũ)
+  display.fillRect(0,0,SCREEN_WIDTH,10,SSD1306_BLACK);
+  display.setCursor(0,0);
+  display.print("Rainbow");
+  display.display();
+
+  delay(30);
 }
