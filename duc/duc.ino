@@ -238,23 +238,27 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
+  float temperature = bme.readTemperature(); // °C
+  float humidity = bme.readHumidity();       // %
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("Nhiiet do: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("Do am: %.1f %%", humidity);
-  display.display();
-
+  // Cập nhật màu LED RGB dựa trên nhiệt độ
   if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255,0,0));
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
   } else {
-    led.setPixelColor(0, led.Color(0,255,0));
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
   }
   led.show();
+
+  // Hiển thị lên OLED
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Nhiet do: ");
+  display.print(temperature, 1);
+  display.println(" C");
+  display.print("Do am:   ");
+  display.print(humidity, 1);
+  display.println(" %");
+  display.display();
 
   delay(1000);
 }
