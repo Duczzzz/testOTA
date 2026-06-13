@@ -28,8 +28,8 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Luu Minh 6g";
+const char* pass = "0369507814";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -57,6 +57,8 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+//--- OTA function ------------------------------------------------------------
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -150,6 +152,35 @@ void getupdate()
     http.end();
 }
 
+//--- LED mode definitions ----------------------------------------------------
+const char* modeNames[] = {
+    "Red",
+    "Green",
+    "Blue",
+    "Yellow",
+    "Cyan",
+    "Magenta",
+    "White",
+    "Off"
+};
+
+uint32_t modeColors[] = {
+    0xFF0000, // Red
+    0x00FF00, // Green
+    0x0000FF, // Blue
+    0xFFFF00, // Yellow
+    0x00FFFF, // Cyan
+    0xFF00FF, // Magenta
+    0xFFFFFF, // White
+    0x000000  // Off
+};
+
+const uint8_t MODE_COUNT = sizeof(modeNames) / sizeof(modeNames[0]);
+unsigned long lastModeChange = 0;
+const unsigned long modeInterval = 2000; // 2 seconds
+uint8_t currentMode = 0;
+
+//--- Setup --------------------------------------------------------------------
 void setup() {
   /*
     Người dùng build code tại đây
@@ -158,8 +189,8 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -169,6 +200,8 @@ void setup() {
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
+  display.display();
+
   if (!bme.begin(0x76,&I2C_BME)) {
     display.clearDisplay();
     Serial.println("Không tìm thấy BME280!");
@@ -179,15 +212,16 @@ void setup() {
     led.show();
     while (1);
   }
+
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
   delay(1000);
+
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
-  display.display();
   display.clearDisplay();
   WiFi.begin(ssid,pass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -223,8 +257,19 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo LED và OLED với chế độ đầu tiên
+  led.setPixelColor(0, modeColors[currentMode]);
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mode: ");
+  display.print(modeNames[currentMode]);
+  display.display();
+  lastModeChange = millis();
 }
 
+//--- Loop ---------------------------------------------------------------------
 void loop() {
   if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
   if(checkupdate == 1) {
@@ -235,22 +280,24 @@ void loop() {
     display.display();
     getupdate();
   }
+
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long previousMillis = 0;
-  const unsigned long interval = 2000;
-  unsigned long currentMillis = millis();
-  static bool ledState = false;
+  unsigned long now = millis();
+  if (now - lastModeChange >= modeInterval) {
+    // Chuyển sang chế độ tiếp theo
+    currentMode = (currentMode + 1) % MODE_COUNT;
+    led.setPixelColor(0, modeColors[currentMode]);
+    led.show();
 
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    digitalWrite(LED, ledState ? HIGH : LOW);
+    // Cập nhật OLED
     display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print("LED ");
-    display.print(ledState ? "ON" : "OFF");
+    display.setCursor(0,0);
+    display.print("Mode: ");
+    display.print(modeNames[currentMode]);
     display.display();
+
+    lastModeChange = now;
   }
 }
