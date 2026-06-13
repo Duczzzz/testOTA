@@ -57,8 +57,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-uint16_t hue = 0; // biến hue cho hiệu ứng cầu vồng
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -225,13 +223,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Hiển thị tên hiệu ứng trên OLED
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Rainbow");
-  display.display();
 }
 
 void loop() {
@@ -247,17 +238,19 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Hiệu ứng cầu vồng cho LED RGB
-  hue += 5;
-  if (hue > 65535) hue = 0;
-  led.setPixelColor(0, led.ColorHSV(hue));
-  led.show();
+  static unsigned long previousMillis = 0;
+  const unsigned long interval = 2000;
+  unsigned long currentMillis = millis();
+  static bool ledState = false;
 
-  // Cập nhật lại tên hiệu ứng (nếu muốn xoá các phần cũ)
-  display.fillRect(0,0,SCREEN_WIDTH,10,SSD1306_BLACK);
-  display.setCursor(0,0);
-  display.print("Rainbow");
-  display.display();
-
-  delay(30);
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState ? HIGH : LOW);
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("LED ");
+    display.print(ledState ? "ON" : "OFF");
+    display.display();
+  }
 }
