@@ -58,7 +58,18 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-//--- OTA function ------------------------------------------------------------
+// Bitmap cho mặt cười (16x16)
+const unsigned char smileyBitmap[] PROGMEM = {
+  0x3C,0x42,0xA9,0x85,0x85,0xA9,0x91,0x91,
+  0x91,0x91,0x85,0x85,0xA9,0x42,0x3C,0x00
+};
+
+// Bitmap cho biểu tượng cảnh báo (16x16)
+const unsigned char warningBitmap[] PROGMEM = {
+  0x00,0x10,0x38,0x7C,0xFE,0xFE,0xFE,0xFE,
+  0xFE,0xFE,0x7C,0x38,0x10,0x00,0x00,0x00
+};
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -152,35 +163,6 @@ void getupdate()
     http.end();
 }
 
-//--- LED mode definitions ----------------------------------------------------
-const char* modeNames[] = {
-    "Red",
-    "Green",
-    "Blue",
-    "Yellow",
-    "Cyan",
-    "Magenta",
-    "White",
-    "Off"
-};
-
-uint32_t modeColors[] = {
-    0xFF0000, // Red
-    0x00FF00, // Green
-    0x0000FF, // Blue
-    0xFFFF00, // Yellow
-    0x00FFFF, // Cyan
-    0xFF00FF, // Magenta
-    0xFFFFFF, // White
-    0x000000  // Off
-};
-
-const uint8_t MODE_COUNT = sizeof(modeNames) / sizeof(modeNames[0]);
-unsigned long lastModeChange = 0;
-const unsigned long modeInterval = 2000; // 2 seconds
-uint8_t currentMode = 0;
-
-//--- Setup --------------------------------------------------------------------
 void setup() {
   /*
     Người dùng build code tại đây
@@ -189,8 +171,8 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
+  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
-
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -200,8 +182,6 @@ void setup() {
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
-  display.display();
-
   if (!bme.begin(0x76,&I2C_BME)) {
     display.clearDisplay();
     Serial.println("Không tìm thấy BME280!");
@@ -212,16 +192,15 @@ void setup() {
     led.show();
     while (1);
   }
-
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
   delay(1000);
-
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
+  display.display();
   display.clearDisplay();
   WiFi.begin(ssid,pass);
   while (WiFi.status() != WL_CONNECTED) {
@@ -257,19 +236,8 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Khởi tạo LED và OLED với chế độ đầu tiên
-  led.setPixelColor(0, modeColors[currentMode]);
-  led.show();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mode: ");
-  display.print(modeNames[currentMode]);
-  display.display();
-  lastModeChange = millis();
 }
 
-//--- Loop ---------------------------------------------------------------------
 void loop() {
   if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
   if(checkupdate == 1) {
@@ -280,24 +248,32 @@ void loop() {
     display.display();
     getupdate();
   }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long now = millis();
-  if (now - lastModeChange >= modeInterval) {
-    // Chuyển sang chế độ tiếp theo
-    currentMode = (currentMode + 1) % MODE_COUNT;
-    led.setPixelColor(0, modeColors[currentMode]);
-    led.show();
-
-    // Cập nhật OLED
-    display.clearDisplay();
+  float temperature = bme.readTemperature(); // độ C
+  display.clearDisplay();
+  if (temperature < 30.0) {
+    // Hiển thị mặt cười
+    display.drawBitmap((SCREEN_WIDTH-16)/2, (SCREEN_HEIGHT-16)/2, smileyBitmap, 16, 16, SSD1306_WHITE);
     display.setCursor(0,0);
-    display.print("Mode: ");
-    display.print(modeNames[currentMode]);
-    display.display();
-
-    lastModeChange = now;
+    display.print("Nhiet do: ");
+    display.print(temperature,1);
+    display.print(" C");
+  } else if (temperature > 35.0) {
+    // Hiển thị cảnh báo
+    display.drawBitmap((SCREEN_WIDTH-16)/2, (SCREEN_HEIGHT-16)/2, warningBitmap, 16, 16, SSD1306_WHITE);
+    display.setCursor(0,0);
+    display.print("Nhiet do: ");
+    display.print(temperature,1);
+    display.print(" C");
+  } else {
+    // Hiển thị nhiệt độ bình thường
+    display.setCursor(0,0);
+    display.print("Nhiet do: ");
+    display.print(temperature,1);
+    display.print(" C");
   }
+  display.display();
+  delay(1000);
 }
