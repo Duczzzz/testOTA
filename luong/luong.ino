@@ -4,7 +4,6 @@
 // + thư viện Firebase ESP32 Client by Mobizt
 // + thư viện Adafruit GFX libraray by Adafruit
 // + thư viện Adafruit SSD1306 by Adafruit
-// + thư viện DHT sensor library by Adafruit
 // Tác giả MinhDuc
 // 07/03/2026
 // Led RGB chân 9
@@ -28,7 +27,6 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
-#include <DHT.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
@@ -60,9 +58,41 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
+// Định nghĩa các nút
+const int BTN_RED   = 10; // SW8
+const int BTN_GREEN = 12; // SW9
+const int BTN_BLUE  = 14; // SW11
+
+// Trạng thái hiện tại của LED
+enum ColorState { RED, GREEN, BLUE };
+ColorState currentColor = RED;
+
+// Hàm hiển thị màu hiện tại lên OLED
+void displayColor() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print("Mau LED: ");
+  switch (currentColor) {
+    case RED:   display.print("Do"); break;
+    case GREEN: display.print("Xanh la"); break;
+    case BLUE:  display.print("Xanh duong"); break;
+  }
+  display.display();
+}
+
+// Hàm đổi màu LED và cập nhật OLED
+void setColor(ColorState col) {
+  currentColor = col;
+  switch (col) {
+    case RED:   led.setPixelColor(0, led.Color(255, 0, 0)); break;
+    case GREEN: led.setPixelColor(0, led.Color(0, 255, 0)); break;
+    case BLUE:  led.setPixelColor(0, led.Color(0, 0, 255)); break;
+  }
+  led.show();
+  displayColor();
+}
 
 void getupdate()
 {
@@ -161,12 +191,15 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo I2C cho BME280 và OLED
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
+  // Khởi tạo LED RGB
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
+  // Đặt màu mặc định RED và hiển thị
+  setColor(RED);
+  // Khởi tạo OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -176,6 +209,7 @@ void setup() {
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
+  // Khởi tạo BME280
   if (!bme.begin(0x76,&I2C_BME)) {
     display.clearDisplay();
     Serial.println("Không tìm thấy BME280!");
@@ -186,19 +220,19 @@ void setup() {
     led.show();
     while (1);
   }
-  // Khởi động DHT11
-  dht.begin();
-
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
   delay(1000);
+  // Cấu hình LED báo trạng thái
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  // Serial
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
   display.clearDisplay();
+  // WiFi
   WiFi.begin(ssid,pass);
   while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
@@ -233,6 +267,11 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Cấu hình các nút nhấn
+  pinMode(BTN_RED,   INPUT_PULLUP);
+  pinMode(BTN_GREEN, INPUT_PULLUP);
+  pinMode(BTN_BLUE,  INPUT_PULLUP);
 }
 
 void loop() {
@@ -248,30 +287,32 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Đọc dữ liệu DHT11
-  float humidity = dht.readHumidity();
-  float temperature = dht.readTemperature(); // Celsius
+  // Đọc nút nhấn và đổi màu LED nếu có nhấn
+  static bool lastRedState   = HIGH;
+  static bool lastGreenState = HIGH;
+  static bool lastBlueState  = HIGH;
+  bool curRedState   = digitalRead(BTN_RED);
+  bool curGreenState = digitalRead(BTN_GREEN);
+  bool curBlueState  = digitalRead(BTN_BLUE);
 
-  // Kiểm tra lỗi đọc
-  if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
+  // Debounce đơn giản
+  if (curRedState == LOW && lastRedState == HIGH) {
+    setColor(RED);
+    delay(200);
+  }
+  if (curGreenState == LOW && lastGreenState == HIGH) {
+    setColor(GREEN);
+    delay(200);
+  }
+  if (curBlueState == LOW && lastBlueState == HIGH) {
+    setColor(BLUE);
+    delay(200);
   }
 
-  // Điều khiển LED dựa trên nhiệt độ
-  if (temperature > 32.0) {
-    digitalWrite(LED, HIGH);
-  } else {
-    digitalWrite(LED, LOW);
-  }
+  lastRedState   = curRedState;
+  lastGreenState = curGreenState;
+  lastBlueState  = curBlueState;
 
-  // Hiển thị lên OLED
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.printf("N: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("D: %.1f %%", humidity);
-  display.display();
-
-  delay(2000);
+  // Thêm một chút delay để giảm tải CPU
+  delay(10);
 }
