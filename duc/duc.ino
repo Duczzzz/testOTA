@@ -35,6 +35,7 @@ const char* pass = "0369507814";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+#define SW11_PIN 14          // Nút nhấn SW11
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,17 +59,9 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// Bitmap cho mặt cười (16x16)
-const unsigned char smileyBitmap[] PROGMEM = {
-  0x3C,0x42,0xA9,0x85,0x85,0xA9,0x91,0x91,
-  0x91,0x91,0x85,0x85,0xA9,0x42,0x3C,0x00
-};
-
-// Bitmap cho biểu tượng cảnh báo (16x16)
-const unsigned char warningBitmap[] PROGMEM = {
-  0x00,0x10,0x38,0x7C,0xFE,0xFE,0xFE,0xFE,
-  0xFE,0xFE,0x7C,0x38,0x10,0x00,0x00,0x00
-};
+unsigned long startTime = 0;          // thời gian bắt đầu tính uptime
+unsigned long prevDisplay = 0;        // thời gian cập nhật OLED lần cuối
+unsigned long prevColor = 0;          // thời gian đổi màu LED lần cuối
 
 void getupdate()
 {
@@ -198,6 +191,11 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  pinMode(SW11_PIN, INPUT_PULLUP);          // cấu hình nút SW11
+  randomSeed(analogRead(0));                // khởi tạo bộ sinh ngẫu nhiên
+  startTime = millis();                     // khởi động bộ đếm uptime
+  prevDisplay = millis();
+  prevColor = millis();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -248,32 +246,50 @@ void loop() {
     display.display();
     getupdate();
   }
+
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature(); // độ C
-  display.clearDisplay();
-  if (temperature < 30.0) {
-    // Hiển thị mặt cười
-    display.drawBitmap((SCREEN_WIDTH-16)/2, (SCREEN_HEIGHT-16)/2, smileyBitmap, 16, 16, SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.print("Nhiet do: ");
-    display.print(temperature,1);
-    display.print(" C");
-  } else if (temperature > 35.0) {
-    // Hiển thị cảnh báo
-    display.drawBitmap((SCREEN_WIDTH-16)/2, (SCREEN_HEIGHT-16)/2, warningBitmap, 16, 16, SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.print("Nhiet do: ");
-    display.print(temperature,1);
-    display.print(" C");
-  } else {
-    // Hiển thị nhiệt độ bình thường
-    display.setCursor(0,0);
-    display.print("Nhiet do: ");
-    display.print(temperature,1);
-    display.print(" C");
+  // Kiểm tra nút SW11 để reset uptime
+  if (digitalRead(SW11_PIN) == LOW) {
+    // debounce ngắn
+    delay(50);
+    if (digitalRead(SW11_PIN) == LOW) {
+      startTime = millis();
+    }
+    while (digitalRead(SW11_PIN) == LOW) {
+      // chờ nút được thả
+      delay(10);
+    }
   }
-  display.display();
-  delay(1000);
+
+  unsigned long now = millis();
+
+  // Cập nhật OLED mỗi giây
+  if (now - prevDisplay >= 1000) {
+    prevDisplay = now;
+    unsigned long elapsed = now - startTime;
+    unsigned int seconds = (elapsed / 1000) % 60;
+    unsigned int minutes = (elapsed / 60000) % 60;
+    unsigned int hours   = (elapsed / 3600000);
+    char timeStr[9];
+    sprintf(timeStr, "%02u:%02u:%02u", hours, minutes, seconds);
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(0, 0);
+    display.print("Uptime:");
+    display.setCursor(0, 30);
+    display.print(timeStr);
+    display.display();
+  }
+
+  // Đổi màu LED mỗi 10 giây
+  if (now - prevColor >= 10000) {
+    prevColor = now;
+    uint8_t r = random(0, 256);
+    uint8_t g = random(0, 256);
+    uint8_t b = random(0, 256);
+    led.setPixelColor(0, led.Color(r, g, b));
+    led.show();
+  }
 }
