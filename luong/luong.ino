@@ -57,38 +57,8 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-// ----- Định nghĩa cho việc đổi màu LED và hiển thị trên OLED -----
-#define BTN_PIN 10               // SW8, active low
-#define DEBOUNCE_MS 200
-
-uint32_t colors[] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00, // Yellow
-  0xFF00FF, // Magenta
-  0x00FFFF, // Cyan
-  0xFFFFFF  // White
-};
-const char* colorNames[] = {
-  "Red","Green","Blue","Yellow","Magenta","Cyan","White"
-};
-const uint8_t COLOR_COUNT = sizeof(colors) / sizeof(colors[0]);
-uint8_t colorIndex = 0;
-unsigned long lastBtnTime = 0;
-
-void updateLEDandDisplay() {
-  led.setPixelColor(0, colors[colorIndex]);
-  led.show();
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
-  display.print("Mau LED: ");
-  display.print(colorNames[colorIndex]);
-  display.display();
-}
+bool ledState = false;
+unsigned long lastToggle = 0;
 
 void getupdate()
 {
@@ -116,7 +86,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -187,13 +158,21 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo I2C, LED RGB và OLED đã được thực hiện ở trên
+  // Đặt trạng thái LED chân 2 ban đầu tắt và hiển thị trên OLED
+  digitalWrite(LED, LOW);
+  ledState = false;
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
+
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Khởi tạo LED màu đầu tiên và hiển thị
-  updateLEDandDisplay();
-
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -219,7 +198,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(BTN_PIN, INPUT_PULLUP);   // nút SW8
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -248,7 +226,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -273,13 +253,15 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Kiểm tra nút nhấn để đổi màu LED
-  if (digitalRead(BTN_PIN) == LOW) {
-    unsigned long now = millis();
-    if (now - lastBtnTime > DEBOUNCE_MS) {
-      lastBtnTime = now;
-      colorIndex = (colorIndex + 1) % COLOR_COUNT;
-      updateLEDandDisplay();
-    }
+  // Nhấp nháy LED chân 2 mỗi 2 giây và cập nhật trạng thái lên OLED
+  if (millis() - lastToggle >= 2000) {
+    ledState = !ledState;
+    digitalWrite(LED, ledState ? HIGH : LOW);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("LED ");
+    display.print(ledState ? "ON" : "OFF");
+    display.display();
+    lastToggle = millis();
   }
 }
