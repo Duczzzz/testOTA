@@ -1,22 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -35,7 +16,6 @@ const char* pass = "04072009";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
-#define SW8_PIN 10
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,22 +38,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-// Mảng màu và tên màu
-int colorIndex = 0;
-const uint32_t colors[4] = {
-  0xFF0000, // Red
-  0x00FF00, // Green
-  0x0000FF, // Blue
-  0xFFFF00  // Yellow
-};
-const char* colorNames[4] = {
-  "Red",
-  "Green",
-  "Blue",
-  "Yellow"
-};
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -175,7 +139,7 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, colors[colorIndex]);
+  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -202,7 +166,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(SW8_PIN, INPUT_PULLUP);   // cấu hình nút nhấn SW8
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -253,26 +216,30 @@ void loop() {
     display.display();
     getupdate();
   }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static bool lastState = HIGH;
-  bool curState = digitalRead(SW8_PIN);
-  if (lastState == HIGH && curState == LOW) {
-    // nút được nhấn
-    colorIndex = (colorIndex + 1) % 4;
-    led.setPixelColor(0, colors[colorIndex]);
-    led.show();
+  float temperature = bme.readTemperature(); // °C
+  float humidity = bme.readHumidity();       // %
 
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    display.print("Mau: ");
-    display.print(colorNames[colorIndex]);
-    display.display();
-
-    delay(200); // debounce
+  // Cập nhật màu LED RGB dựa trên nhiệt độ
+  if (temperature > 36.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
   }
-  lastState = curState;
+  led.show();
+
+  // Hiển thị lên OLED
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Nhiet do: ");
+  display.print(temperature, 1);
+  display.println(" C");
+  display.print("Do am:   ");
+  display.print(humidity, 1);
+  display.println(" %");
+  display.display();
+
+  delay(1000);
 }
