@@ -1,3 +1,22 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -38,6 +57,12 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+// Biến cho việc nhấp nháy LED
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000; // 2 giây
+bool ledState = false;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -204,6 +229,14 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo trạng thái LED và hiển thị trên OLED
+  ledState = false;
+  digitalWrite(LED, ledState);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
 }
 
 void loop() {
@@ -219,27 +252,19 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature(); // °C
-  float humidity = bme.readHumidity();       // %
-
-  // Cập nhật màu LED RGB dựa trên nhiệt độ
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+  // Nhấp nháy LED mỗi 2 giây và cập nhật trạng thái lên OLED
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    digitalWrite(LED, ledState);
+    display.clearDisplay();
+    display.setCursor(0,0);
+    if (ledState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
+    display.display();
   }
-  led.show();
-
-  // Hiển thị lên OLED
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.print("Nhiet do: ");
-  display.print(temperature, 1);
-  display.println(" C");
-  display.print("Do am:   ");
-  display.print(humidity, 1);
-  display.println(" %");
-  display.display();
-
-  delay(1000);
 }
