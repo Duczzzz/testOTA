@@ -1,22 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -57,10 +38,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000;
-bool ledState = false;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -213,14 +190,8 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Khởi tạo trạng thái LED ban đầu
-  digitalWrite(LED, LOW);
-  ledState = false;
-  // Hiển thị trạng thái LED ban đầu
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
+  // Khởi tạo mảng màu và tên màu
+  // Không cần khai báo ở đây vì sẽ dùng static trong loop
 }
 
 void loop() {
@@ -236,22 +207,17 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    ledState = !ledState;
-    if (ledState) {
-      digitalWrite(LED, HIGH);
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.print("LED ON");
-      display.display();
-    } else {
-      digitalWrite(LED, LOW);
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.print("LED OFF");
-      display.display();
-    }
-  }
+  static uint32_t colors[] = {led.Color(255,0,0), led.Color(0,255,0), led.Color(0,0,255), led.Color(255,255,0), led.Color(0,255,255), led.Color(255,0,255), led.Color(255,255,255), led.Color(0,0,0)};
+  static const char* names[] = {"Red","Green","Blue","Yellow","Cyan","Magenta","White","Off"};
+  static uint8_t idx = 0;
+  led.setPixelColor(0, colors[idx]);
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau hien tai:");
+  display.setCursor(0,20);
+  display.print(names[idx]);
+  display.display();
+  idx = (idx + 1) % 8;
+  delay(2000);
 }
