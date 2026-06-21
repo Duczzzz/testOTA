@@ -64,7 +64,7 @@ bool ledState = false;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/{user}/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
