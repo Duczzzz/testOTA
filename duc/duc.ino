@@ -28,13 +28,14 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Luu Minh 6g";
+const char* pass = "0369507814";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+#define BTN_SW8 10          // Nút nhấn SW8
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,6 +59,9 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 bool ledState = false;
+bool lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
 
 void getupdate()
 {
@@ -105,50 +109,36 @@ void getupdate()
           });
           size_t written = Update.writeStream(client);
           display.clearDisplay();
-          if (Update.size() == written)
-          {
-              display.setCursor(0, 10);
-              display.print("Update successfully completed");
-              Serial.println("Update successfully completed. Rebooting...");
-              if (Update.end())
-              {
-                  Serial.println("Rebooting...");
-                  display.setCursor(0, 30);
-                  display.printf("Rebooting...");
-                  ESP.restart();
-              } 
-              else 
-              {
-                  Serial.print("Update failed: ");
-                  display.setCursor(0, 30);
-                  display.print("Update failed");
-                  Serial.println(Update.errorString());
-              }
-          }
-          else
-          {
-              display.setCursor(0, 30);
-              display.print("Not enough space for OTA.");
-              Serial.println("Not enough space for OTA.");
-          }
-      } 
-        else
-        {
+      if (written == Update.size()) {
+        Serial.println("Update ghi du du lieu.");
+        if (Update.end()) {
+          if (Update.isFinished()) {
+            Serial.println("Update thanh cong. Dang khoi dong lai...");
+            display.clearDisplay();
             display.setCursor(0, 10);
-            display.print("Failed to begin OTA update.");
-            Serial.println("Failed to begin OTA update.");
+            display.print("Update thanh cong");
+            display.setCursor(0, 30);
+            display.print("Rebooting...");
+            display.display();
+            delay(1000);
+            ESP.restart();
+          } else {
+            Serial.println("Update chua hoan tat!");
+          }
+        } else {
+          Serial.print("Update failed: ");
+          Serial.println(Update.errorString());
         }
+      } else {
+        Serial.println("Ghi firmware bi thieu du lieu!");
+      }
+    } else {
+      Serial.println("Khong the bat dau OTA!");
     }
-    else
-    {
-        display.setCursor(0, 10);
-        display.print("Failed to download firmware. HTTP code: ");
-        display.println(httpCode);
-        Serial.print("Failed to download firmware. HTTP code: ");
-        Serial.println(httpCode);
+    }else {
+      Serial.print("Tai firmware that bai. HTTP code: ");
+      Serial.println(httpCode);
     }
-    display.display();
-    delay(400);
     http.end();
 }
 
@@ -156,7 +146,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  // Khởi tạo các thành phần đã có
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -188,6 +177,7 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  pinMode(BTN_SW8, INPUT_PULLUP);   // cấu hình nút SW8
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -226,12 +216,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Hiển thị trạng thái LED ban đầu
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
 }
 
 void loop() {
@@ -247,12 +231,25 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Đảo trạng thái LED mỗi giây và cập nhật OLED
-  ledState = !ledState;
-  digitalWrite(LED, ledState ? HIGH : LOW);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print(ledState ? "LED ON" : "LED OFF");
-  display.display();
-  delay(1000);
+  // Đọc nút SW8 với debounce
+  int reading = digitalRead(BTN_SW8);
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != ledState) {
+      if (reading == LOW) { // nút được nhấn (active low)
+        ledState = !ledState;
+        digitalWrite(LED, ledState ? HIGH : LOW);
+        // Cập nhật OLED
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(0,0);
+        display.print("LED ");
+        display.print(ledState ? "ON" : "OFF");
+        display.display();
+      }
+    }
+  }
+  lastButtonState = reading;
 }
