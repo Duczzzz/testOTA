@@ -57,7 +57,19 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-bool ledState = false;
+
+// Mảng màu và tên màu cho LED RGB
+const uint32_t colors[] = {
+  led.Color(255, 0, 0),
+  led.Color(0, 255, 0),
+  led.Color(0, 0, 255)
+};
+const char* colorNames[] = {
+  "RED",
+  "GREEN",
+  "BLUE"
+};
+int colorIndex = 0;
 
 void getupdate()
 {
@@ -146,7 +158,7 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.setPixelColor(0, colors[colorIndex]);
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -226,15 +238,13 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  ledState = !ledState;
-  digitalWrite(LED, ledState);
+  colorIndex = (colorIndex + 1) % 3;
+  led.setPixelColor(0, colors[colorIndex]);
+  led.show();
   display.clearDisplay();
   display.setCursor(0,0);
-  if (ledState) {
-    display.print("LED ON");
-  } else {
-    display.print("LED OFF");
-  }
+  display.print("Color: ");
+  display.print(colorNames[colorIndex]);
   display.display();
   delay(2000);
 }
