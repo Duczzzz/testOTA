@@ -89,8 +89,7 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%
-", percent);
+              Serial.printf("OTA %d%%", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
