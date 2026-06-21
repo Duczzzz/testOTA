@@ -28,14 +28,13 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 
-const char* ssid = "Luu Minh 6g";
-const char* pass = "0369507814";
+const char* ssid = "DUC";
+const char* pass = "14042004";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
-#define SW11_PIN 14          // Nút nhấn SW11
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,10 +57,7 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-unsigned long startTime = 0;          // thời gian bắt đầu tính uptime
-unsigned long prevDisplay = 0;        // thời gian cập nhật OLED lần cuối
-unsigned long prevColor = 0;          // thời gian đổi màu LED lần cuối
+bool ledState = false;
 
 void getupdate()
 {
@@ -160,6 +156,7 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo các thành phần đã có
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -191,11 +188,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(SW11_PIN, INPUT_PULLUP);          // cấu hình nút SW11
-  randomSeed(analogRead(0));                // khởi tạo bộ sinh ngẫu nhiên
-  startTime = millis();                     // khởi động bộ đếm uptime
-  prevDisplay = millis();
-  prevColor = millis();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -234,6 +226,12 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Hiển thị trạng thái LED ban đầu
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
 }
 
 void loop() {
@@ -246,50 +244,15 @@ void loop() {
     display.display();
     getupdate();
   }
-
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Kiểm tra nút SW11 để reset uptime
-  if (digitalRead(SW11_PIN) == LOW) {
-    // debounce ngắn
-    delay(50);
-    if (digitalRead(SW11_PIN) == LOW) {
-      startTime = millis();
-    }
-    while (digitalRead(SW11_PIN) == LOW) {
-      // chờ nút được thả
-      delay(10);
-    }
-  }
-
-  unsigned long now = millis();
-
-  // Cập nhật OLED mỗi giây
-  if (now - prevDisplay >= 1000) {
-    prevDisplay = now;
-    unsigned long elapsed = now - startTime;
-    unsigned int seconds = (elapsed / 1000) % 60;
-    unsigned int minutes = (elapsed / 60000) % 60;
-    unsigned int hours   = (elapsed / 3600000);
-    char timeStr[9];
-    sprintf(timeStr, "%02u:%02u:%02u", hours, minutes, seconds);
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 0);
-    display.print("Uptime:");
-    display.setCursor(0, 30);
-    display.print(timeStr);
-    display.display();
-  }
-
-  // Đổi màu LED mỗi 10 giây
-  if (now - prevColor >= 10000) {
-    prevColor = now;
-    uint8_t r = random(0, 256);
-    uint8_t g = random(0, 256);
-    uint8_t b = random(0, 256);
-    led.setPixelColor(0, led.Color(r, g, b));
-    led.show();
-  }
+  // Đảo trạng thái LED mỗi giây và cập nhật OLED
+  ledState = !ledState;
+  digitalWrite(LED, ledState ? HIGH : LOW);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print(ledState ? "LED ON" : "LED OFF");
+  display.display();
+  delay(1000);
 }
