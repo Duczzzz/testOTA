@@ -1,22 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -27,6 +8,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
+#include <DHT.h>
 
 const char* ssid = "Luu Minh 6g";
 const char* pass = "0369507814";
@@ -35,7 +17,6 @@ const char* pass = "0369507814";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
-#define BTN_SW8 10          // Nút nhấn SW8
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,10 +39,10 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-bool ledState = false;
-bool lastButtonState = HIGH;
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50;
+
+#define DHTPIN 11
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 void getupdate()
 {
@@ -177,7 +158,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(BTN_SW8, INPUT_PULLUP);   // cấu hình nút SW8
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -216,6 +196,9 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo DHT11
+  dht.begin();
 }
 
 void loop() {
@@ -231,25 +214,34 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Đọc nút SW8 với debounce
-  int reading = digitalRead(BTN_SW8);
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
   }
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != ledState) {
-      if (reading == LOW) { // nút được nhấn (active low)
-        ledState = !ledState;
-        digitalWrite(LED, ledState ? HIGH : LOW);
-        // Cập nhật OLED
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0,0);
-        display.print("LED ");
-        display.print(ledState ? "ON" : "OFF");
-        display.display();
-      }
-    }
+
+  // Hiển thị nhiệt độ và độ ẩm lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Nhiet do: ");
+  display.print(t);
+  display.print(" C");
+  display.setCursor(0,15);
+  display.print("Do am: ");
+  display.print(h);
+  display.print(" %");
+  display.display();
+
+  // Đổi màu LED RGB dựa trên nhiệt độ
+  if (t > 32.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
   }
-  lastButtonState = reading;
+  led.show();
+
+  delay(2000);
 }
