@@ -1,3 +1,22 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -38,30 +57,8 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-const uint32_t colors[] = {
-  led.Color(255, 0, 0),
-  led.Color(0, 255, 0),
-  led.Color(0, 0, 255),
-  led.Color(255, 255, 0),
-  led.Color(0, 255, 255),
-  led.Color(255, 0, 255),
-  led.Color(255, 255, 255)
-};
-
-const char* colorNames[] = {
-  "Do",
-  "Xanh",
-  "Xanh duong",
-  "Vang",
-  "Xanh lam",
-  "Tim",
-  "Trang"
-};
-
-int colorIndex = 0;
-unsigned long lastChange = 0;
-const unsigned long changeInterval = 2000;
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000;
 
 void getupdate()
 {
@@ -94,7 +91,6 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
@@ -143,11 +139,14 @@ void getupdate()
 }
 
 void setup() {
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, colors[colorIndex]);
+  led.setPixelColor(0, led.Color(255, 0, 255));
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -212,13 +211,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Hiển thị màu hiện tại trên OLED
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mau hien tai:");
-  display.setCursor(0,20);
-  display.print(colorNames[colorIndex]);
-  display.display();
 }
 
 void loop() {
@@ -231,18 +223,22 @@ void loop() {
     display.display();
     getupdate();
   }
-  // Kiểm tra thời gian để đổi màu
-  if(millis() - lastChange >= changeInterval) {
-    lastChange = millis();
-    colorIndex = (colorIndex + 1) % (sizeof(colors)/sizeof(colors[0]));
-    led.setPixelColor(0, colors[colorIndex]);
-    led.show();
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    int ledState = digitalRead(LED);
+    ledState = !ledState;
+    digitalWrite(LED, ledState);
     display.clearDisplay();
     display.setCursor(0,0);
-    display.print("Mau hien tai:");
-    display.setCursor(0,20);
-    display.print(colorNames[colorIndex]);
+    if (ledState) {
+      display.print("LED ON");
+    } else {
+      display.print("LED OFF");
+    }
     display.display();
   }
-  // Đọc nút nhấn (nếu cần) và các xử lý khác
 }
