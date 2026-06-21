@@ -69,7 +69,6 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
@@ -190,8 +189,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Khởi tạo mảng màu và tên màu
-  // Không cần khai báo ở đây vì sẽ dùng static trong loop
 }
 
 void loop() {
@@ -207,17 +204,24 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static uint32_t colors[] = {led.Color(255,0,0), led.Color(0,255,0), led.Color(0,0,255), led.Color(255,255,0), led.Color(0,255,255), led.Color(255,0,255), led.Color(255,255,255), led.Color(0,0,0)};
-  static const char* names[] = {"Red","Green","Blue","Yellow","Cyan","Magenta","White","Off"};
-  static uint8_t idx = 0;
-  led.setPixelColor(0, colors[idx]);
-  led.show();
+  float temp = bme.readTemperature();
+  float hum = bme.readHumidity();
   display.clearDisplay();
+  display.setTextSize(1);
   display.setCursor(0,0);
-  display.print("Mau hien tai:");
-  display.setCursor(0,20);
-  display.print(names[idx]);
+  display.print("Temp: ");
+  display.print(temp);
+  display.print("C");
+  display.setCursor(0,10);
+  display.print("Hum: ");
+  display.print(hum);
+  display.print("%");
   display.display();
-  idx = (idx + 1) % 8;
+  if (temp > 36) {
+    led.setPixelColor(0, led.Color(255,0,0));
+  } else {
+    led.setPixelColor(0, led.Color(0,255,0));
+  }
+  led.show();
   delay(2000);
 }
