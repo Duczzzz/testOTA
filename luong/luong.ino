@@ -89,7 +89,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -160,6 +161,7 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo các thành phần đã có
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -219,7 +221,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -230,7 +234,7 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // Khởi tạo trạng thái LED và hiển thị trên OLED
+  // Khởi tạo trạng thái LED và hiển thị lần đầu
   ledState = false;
   digitalWrite(LED, ledState);
   display.clearDisplay();
@@ -252,7 +256,7 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Nhấp nháy LED mỗi 2 giây và cập nhật trạng thái lên OLED
+  // Nhấp nháy LED mỗi 2 giây và cập nhật OLED
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
@@ -260,11 +264,8 @@ void loop() {
     digitalWrite(LED, ledState);
     display.clearDisplay();
     display.setCursor(0,0);
-    if (ledState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
+    display.print("LED ");
+    display.print(ledState ? "ON" : "OFF");
     display.display();
   }
 }
