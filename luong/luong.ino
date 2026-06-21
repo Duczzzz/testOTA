@@ -57,11 +57,9 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-// Định nghĩa màu và tên màu
-uint32_t colorArray[6];
-const char* colorName[6];
-int currentColorIndex = 0;
+unsigned long previousMillis = 0;
+const unsigned long interval = 2000;
+bool ledState = false;
 
 void getupdate()
 {
@@ -215,28 +213,13 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Khởi tạo mảng màu và tên màu
-  colorArray[0] = led.Color(255,0,0);
-  colorName[0] = "Red";
-  colorArray[1] = led.Color(0,255,0);
-  colorName[1] = "Green";
-  colorArray[2] = led.Color(0,0,255);
-  colorName[2] = "Blue";
-  colorArray[3] = led.Color(255,255,0);
-  colorName[3] = "Yellow";
-  colorArray[4] = led.Color(255,0,255);
-  colorName[4] = "Magenta";
-  colorArray[5] = led.Color(0,255,255);
-  colorName[5] = "Cyan";
-  currentColorIndex = 0;
-  // Đặt màu LED ban đầu và hiển thị trên OLED
-  led.setPixelColor(0, colorArray[currentColorIndex]);
-  led.show();
+  // Khởi tạo trạng thái LED ban đầu
+  digitalWrite(LED, LOW);
+  ledState = false;
+  // Hiển thị trạng thái LED ban đầu
   display.clearDisplay();
   display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colorName[currentColorIndex]);
+  display.print("LED OFF");
   display.display();
 }
 
@@ -253,16 +236,22 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Thay đổi màu LED
-  led.setPixelColor(0, colorArray[currentColorIndex]);
-  led.show();
-  // Hiển thị màu hiện tại trên OLED
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colorName[currentColorIndex]);
-  display.display();
-  // Chuyển sang màu tiếp theo
-  currentColorIndex = (currentColorIndex + 1) % 6;
-  delay(1000);
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
+    if (ledState) {
+      digitalWrite(LED, HIGH);
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("LED ON");
+      display.display();
+    } else {
+      digitalWrite(LED, LOW);
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("LED OFF");
+      display.display();
+    }
+  }
 }
