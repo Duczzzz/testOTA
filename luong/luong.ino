@@ -57,27 +57,10 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-struct ColorInfo
-{
-  const char* name;
-  uint32_t value;
-};
-
-const int colorCount = 3;
-ColorInfo colors[colorCount] =
-{
-  {"RED", led.Color(255, 0, 0)},
-  {"GREEN", led.Color(0, 255, 0)},
-  {"BLUE", led.Color(0, 0, 255)}
-};
-
-int currentColor = 0;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/{user}/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -100,7 +83,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -161,8 +145,8 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, colors[currentColor].value);
-  led.show();
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -216,7 +200,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -225,6 +211,15 @@ void setup() {
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
   display.clearDisplay();
+  display.display();
+  // Thiết lập LED màu đỏ ban đầu và hiển thị trên OLED
+  led.setPixelColor(0, led.Color(255,0,0));
+  led.show();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Mau: Do");
   display.display();
 }
 
@@ -241,16 +236,34 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  led.setPixelColor(0, colors[currentColor].value);
-  led.show();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Color: ");
-  display.print(colors[currentColor].name);
-  display.display();
-  delay(1000);
-  currentColor = currentColor + 1;
-  if (currentColor >= colorCount) {
-    currentColor = 0;
+  static unsigned long lastChange = 0;
+  static uint8_t state = 0;
+  if(millis() - lastChange > 2000) {
+    lastChange = millis();
+    if(state == 0) {
+      led.setPixelColor(0, led.Color(255,0,0));
+      led.show();
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("Mau: Do");
+      display.display();
+      state = 1;
+    } else if(state == 1) {
+      led.setPixelColor(0, led.Color(0,255,0));
+      led.show();
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("Mau: Xanh");
+      display.display();
+      state = 2;
+    } else if(state == 2) {
+      led.setPixelColor(0, led.Color(0,0,255));
+      led.show();
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("Mau: Xanh Duong");
+      display.display();
+      state = 0;
+    }
   }
 }
