@@ -83,7 +83,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -199,7 +200,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -210,11 +213,15 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // Khởi tạo trạng thái LED và hiển thị trên OLED
-  digitalWrite(LED, LOW);
+  // Khởi tạo LED màu đỏ và hiển thị trên OLED
+  led.setPixelColor(0, led.Color(255,0,0));
+  led.show();
   display.clearDisplay();
   display.setCursor(0,0);
-  display.print("LED OFF");
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.println("Mau hien tai:");
+  display.println("Red");
   display.display();
 }
 
@@ -231,20 +238,31 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static unsigned long lastToggle = 0;
-  if (millis() - lastToggle >= 2000) {
-    // Đảo trạng thái LED
-    bool currentState = digitalRead(LED);
-    digitalWrite(LED, !currentState);
-    // Cập nhật OLED
+  static const uint32_t colors[] = {
+    led.Color(255,0,0),   // Red
+    led.Color(0,255,0),   // Green
+    led.Color(0,0,255),   // Blue
+    led.Color(255,255,0), // Yellow
+    led.Color(0,255,255), // Cyan
+    led.Color(255,0,255), // Magenta
+    led.Color(255,255,255)// White
+  };
+  static const char* colorNames[] = {
+    "Red","Green","Blue","Yellow","Cyan","Magenta","White"
+  };
+  static unsigned long lastChange = 0;
+  static int idx = 0;
+  if (millis() - lastChange > 3000) {
+    idx = (idx + 1) % (sizeof(colors)/sizeof(colors[0]));
+    led.setPixelColor(0, colors[idx]);
+    led.show();
     display.clearDisplay();
     display.setCursor(0,0);
-    if (!currentState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.println("Mau hien tai:");
+    display.println(colorNames[idx]);
     display.display();
-    lastToggle = millis();
+    lastChange = millis();
   }
 }
