@@ -1,3 +1,22 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -8,10 +27,9 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
-#include <DHT.h>
 
-const char* ssid = "Luu Minh 6g";
-const char* pass = "0369507814";
+const char* ssid = "DUC";
+const char* pass = "14042004";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -39,11 +57,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -196,9 +209,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Khởi tạo DHT11
-  dht.begin();
 }
 
 void loop() {
@@ -214,34 +224,23 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
+  float temperature = bme.readTemperature(); // Celsius
+  float humidity = bme.readHumidity();
 
-  if (isnan(h) || isnan(t)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
-
-  // Hiển thị nhiệt độ và độ ẩm lên OLED
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0,0);
-  display.print("Nhiet do: ");
-  display.print(t);
-  display.print(" C");
-  display.setCursor(0,15);
-  display.print("Do am: ");
-  display.print(h);
-  display.print(" %");
+  display.printf("Nhiet do: %.1f C", temperature);
+  display.setCursor(0,10);
+  display.printf("Do am: %.1f %%", humidity);
   display.display();
 
-  // Đổi màu LED RGB dựa trên nhiệt độ
-  if (t > 32.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  if (temperature > 36.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // đỏ
   } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+    led.setPixelColor(0, led.Color(0, 255, 0)); // xanh lá
   }
   led.show();
 
-  delay(2000);
+  delay(1000);
 }
