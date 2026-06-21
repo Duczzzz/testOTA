@@ -1,3 +1,22 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -38,37 +57,10 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-// Mảng màu và tên màu
-uint32_t colors[] = {
-  0xFF0000, // Đỏ
-  0x00FF00, // Xanh lá
-  0x0000FF, // Xanh dương
-  0xFFFF00, // Vàng
-  0xFF00FF, // Hồng
-  0x00FFFF, // Xanh lơ
-  0xFFFFFF, // Trắng
-  0x000000  // Tắt
-};
-const char* colorNames[] = {
-  "Do",
-  "Xanh la",
-  "Xanh duong",
-  "Vang",
-  "Hong",
-  "Xanh lo",
-  "Trang",
-  "Tat"
-};
-const int colorCount = sizeof(colors) / sizeof(colors[0]);
-int currentColorIndex = 0;
-unsigned long lastChangeTime = 0;
-const unsigned long changeInterval = 3000; // 3 giây
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/duc/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -111,50 +103,36 @@ void getupdate()
           });
           size_t written = Update.writeStream(client);
           display.clearDisplay();
-          if (Update.size() == written)
-          {
-              display.setCursor(0, 10);
-              display.print("Update successfully completed");
-              Serial.println("Update successfully completed. Rebooting...");
-              if (Update.end())
-              {
-                  Serial.println("Rebooting...");
-                  display.setCursor(0, 30);
-                  display.printf("Rebooting...");
-                  ESP.restart();
-              } 
-              else 
-              {
-                  Serial.print("Update failed: ");
-                  display.setCursor(0, 30);
-                  display.print("Update failed");
-                  Serial.println(Update.errorString());
-              }
-          }
-          else
-          {
-              display.setCursor(0, 30);
-              display.print("Not enough space for OTA.");
-              Serial.println("Not enough space for OTA.");
-          }
-      } 
-        else
-        {
+      if (written == Update.size()) {
+        Serial.println("Update ghi du du lieu.");
+        if (Update.end()) {
+          if (Update.isFinished()) {
+            Serial.println("Update thanh cong. Dang khoi dong lai...");
+            display.clearDisplay();
             display.setCursor(0, 10);
-            display.print("Failed to begin OTA update.");
-            Serial.println("Failed to begin OTA update.");
+            display.print("Update thanh cong");
+            display.setCursor(0, 30);
+            display.print("Rebooting...");
+            display.display();
+            delay(1000);
+            ESP.restart();
+          } else {
+            Serial.println("Update chua hoan tat!");
+          }
+        } else {
+          Serial.print("Update failed: ");
+          Serial.println(Update.errorString());
         }
+      } else {
+        Serial.println("Ghi firmware bi thieu du lieu!");
+      }
+    } else {
+      Serial.println("Khong the bat dau OTA!");
     }
-    else
-    {
-        display.setCursor(0, 10);
-        display.print("Failed to download firmware. HTTP code: ");
-        display.println(httpCode);
-        Serial.print("Failed to download firmware. HTTP code: ");
-        Serial.println(httpCode);
+    }else {
+      Serial.print("Tai firmware that bai. HTTP code: ");
+      Serial.println(httpCode);
     }
-    display.display();
-    delay(400);
     http.end();
 }
 
@@ -166,9 +144,8 @@ void setup() {
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  // Đặt màu ban đầu
-  led.setPixelColor(0, colors[currentColorIndex]);
-  led.show();
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -193,7 +170,7 @@ void setup() {
   display.display();
   delay(1000);
   pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
+  digitalWrite(LED,LOW);               // Đặt trạng thái ban đầu tắt
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -247,25 +224,21 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long now = millis();
-  if (now - lastChangeTime >= changeInterval) {
-    lastChangeTime = now;
-    // Chuyển sang màu tiếp theo
-    currentColorIndex = (currentColorIndex + 1) % colorCount;
-    uint32_t c = colors[currentColorIndex];
-    uint8_t r = (c >> 16) & 0xFF;
-    uint8_t g = (c >> 8) & 0xFF;
-    uint8_t b = c & 0xFF;
-    led.setPixelColor(0, led.Color(r, g, b));
-    led.show();
-
-    // Hiển thị tên màu trên OLED
+  static unsigned long lastToggle = 0;
+  if (millis() - lastToggle >= 2000) {
+    lastToggle = millis();
+    // Đảo trạng thái LED
+    bool currentState = digitalRead(LED);
+    digitalWrite(LED, !currentState);
+    // Cập nhật OLED
     display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 10);
-    display.print("Mau:");
-    display.setCursor(0, 35);
-    display.print(colorNames[currentColorIndex]);
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    if (!currentState) {
+      display.print("LED: ON");
+    } else {
+      display.print("LED: OFF");
+    }
     display.display();
   }
 }
