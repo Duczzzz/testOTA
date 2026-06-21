@@ -57,9 +57,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -95,12 +92,7 @@ void getupdate()
               display.print(percent);
               display.print("%");
               display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(
-                    2,
-                    32,
-                    (percent * 116) / 100,
-                    6,
-                    SSD1306_WHITE);
+              display.fillRect(2, 32, (percent * 116) / 100, 6, SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
@@ -139,9 +131,6 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -211,6 +200,23 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  float temp = bme.readTemperature();
+  float hum = bme.readHumidity();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Nhiet do: ");
+  display.print(temp);
+  display.print((char)247);
+  display.print("C");
+  display.setCursor(0,10);
+  display.print("Do am: ");
+  display.print(hum);
+  display.print("%");
+  display.display();
+  if(temp>36) led.setPixelColor(0, led.Color(255,0,0));
+  else led.setPixelColor(0, led.Color(0,255,0));
+  led.show();
 }
 
 void loop() {
@@ -223,22 +229,22 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-    int ledState = digitalRead(LED);
-    ledState = !ledState;
-    digitalWrite(LED, ledState);
-    display.clearDisplay();
-    display.setCursor(0,0);
-    if (ledState) {
-      display.print("LED ON");
-    } else {
-      display.print("LED OFF");
-    }
-    display.display();
-  }
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Nhiet do: ");
+  display.print(temperature);
+  display.print((char)247);
+  display.print("C");
+  display.setCursor(0,10);
+  display.print("Do am: ");
+  display.print(humidity);
+  display.print("%");
+  display.display();
+  if(temperature>36) led.setPixelColor(0, led.Color(255,0,0));
+  else led.setPixelColor(0, led.Color(0,255,0));
+  led.show();
+  delay(1000);
 }
