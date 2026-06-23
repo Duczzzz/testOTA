@@ -57,6 +57,12 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+bool ledState = false;
+const int buttonPin = 10; // SW8
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
+int lastButtonReading = HIGH;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -171,6 +177,7 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  pinMode(buttonPin, INPUT_PULLUP);
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -209,6 +216,14 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo trạng thái LED và hiển thị lên OLED
+  ledState = false;
+  digitalWrite(LED, LOW);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
 }
 
 void loop() {
@@ -224,23 +239,21 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature(); // Celsius
-  float humidity = bme.readHumidity();
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.printf("Nhiet do: %.1f C", temperature);
-  display.setCursor(0,10);
-  display.printf("Do am: %.1f %%", humidity);
-  display.display();
-
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // xanh lá
+  int reading = digitalRead(buttonPin);
+  if (reading != lastButtonReading) {
+    lastDebounceTime = millis();
   }
-  led.show();
-
-  delay(1000);
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != ledState) {
+      if (reading == LOW) { // nút được nhấn
+        ledState = !ledState;
+        digitalWrite(LED, ledState ? HIGH : LOW);
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.print(ledState ? "LED ON" : "LED OFF");
+        display.display();
+      }
+    }
+  }
+  lastButtonReading = reading;
 }
