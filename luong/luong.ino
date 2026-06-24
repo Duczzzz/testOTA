@@ -42,7 +42,7 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-#define DHTPIN 18
+#define DHTPIN 13
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
