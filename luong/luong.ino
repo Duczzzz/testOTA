@@ -301,7 +301,7 @@ void loop()
     // Gui nhiet do len card kenh 1
     Firebase.setFloat(fbdo, PATH_DATA1, temperature);
 
-    if (temperature > nguongCanhBao)
+    if (temperature >= nguongCanhBao)
     {
         led.setPixelColor(0, led.Color(255, 0, 0));
 
