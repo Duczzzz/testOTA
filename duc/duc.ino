@@ -1,22 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -27,6 +8,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
+#include <Servo.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -35,6 +17,7 @@ const char* pass = "14042004";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+#define SERVO_PIN 4
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -58,10 +41,11 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-const int BTN_SW11 = 14;          // SW11 pin
-unsigned long startTime = 0;      // thời gian bắt đầu tính uptime
-unsigned long lastColorChange = 0;
-unsigned long lastDisplayUpdate = 0;
+Servo myServo;
+int currentAngle = 0;
+int direction = 1;
+unsigned long lastUpdate = 0;
+const unsigned long interval = 1000;
 
 void getupdate()
 {
@@ -177,14 +161,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(BTN_SW11, INPUT_PULLUP);          // cấu hình nút SW11
-  randomSeed(analogRead(0));                // khởi tạo seed ngẫu nhiên
-  startTime = millis();                     // khởi tạo thời gian uptime
-  lastColorChange = millis();               // khởi tạo thời gian đổi màu
-  // màu LED ngẫu nhiên ban đầu
-  led.setPixelColor(0, led.Color(random(0,256), random(0,256), random(0,256)));
-  led.show();
-
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -223,6 +199,15 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+
+  // Khởi tạo servo
+  myServo.attach(SERVO_PIN);
+  myServo.write(currentAngle);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Goc: ");
+  display.print(currentAngle);
+  display.display();
 }
 
 void loop() {
@@ -238,38 +223,22 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Kiểm tra nút SW11 (reset uptime)
-  if (digitalRead(BTN_SW11) == LOW) {
-    startTime = millis();          // reset thời gian tính uptime
-    display.clearDisplay();        // xóa màn hình để cập nhật lại nhanh
-    delay(200);                    // debounce ngắn
-  }
-
   unsigned long now = millis();
-
-  // Cập nhật màu LED mỗi 10 giây
-  if (now - lastColorChange >= 10000) {
-    led.setPixelColor(0, led.Color(random(0,256), random(0,256), random(0,256)));
-    led.show();
-    lastColorChange = now;
-  }
-
-  // Cập nhật hiển thị uptime mỗi giây
-  if (now - lastDisplayUpdate >= 1000) {
-    unsigned long elapsed = now - startTime;
-    unsigned int hours = (elapsed / 3600000UL);
-    unsigned int minutes = (elapsed % 3600000UL) / 60000UL;
-    unsigned int seconds = (elapsed % 60000UL) / 1000UL;
-
-    char timeStr[9];
-    sprintf(timeStr, "%02u:%02u:%02u", hours, minutes, seconds);
-
+  if (now - lastUpdate >= interval) {
+    lastUpdate = now;
+    currentAngle += direction;
+    if (currentAngle >= 180) {
+      currentAngle = 180;
+      direction = -1;
+    } else if (currentAngle <= 0) {
+      currentAngle = 0;
+      direction = 1;
+    }
+    myServo.write(currentAngle);
     display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 20);
-    display.print(timeStr);
+    display.setCursor(0,0);
+    display.print("Goc: ");
+    display.print(currentAngle);
     display.display();
-
-    lastDisplayUpdate = now;
   }
 }
