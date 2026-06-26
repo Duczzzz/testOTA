@@ -17,6 +17,7 @@
 // Nút nhấn SW8 kết nối chân GPIO10
 // Nút nhấn SW9 kết nối chân GPIO12 
 // Nút nhấn SW11 kết nối chân GPIO14
+// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -27,7 +28,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <Adafruit_BME280.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -36,6 +37,9 @@ const char* pass = "14042004";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+
+Servo myservo;
+#define servoPin 17
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -59,12 +63,10 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
-// Servo setup
-#define SERVO_PIN 16
-Servo myServo;
-int currentAngle = 0;
-int direction = 1; // 1 = increasing, -1 = decreasing
-unsigned long lastMoveTime = 0;
+// Biến điều khiển servo
+int servoAngle = 0;
+int servoDirection = 1; // 1: tăng, -1: giảm
+unsigned long lastServoUpdate = 0;
 
 void getupdate()
 {
@@ -161,6 +163,24 @@ void setup() {
     Serial.println("OLED fail!");
     while (1);
   }
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50);
+  myservo.attach(servoPin, 1000, 2000);
+  // Đặt góc ban đầu cho servo và hiển thị lên OLED
+  servoAngle = 0;
+  servoDirection = 1;
+  myservo.write(servoAngle);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Goc: ");
+  display.print(servoAngle);
+  display.display();
+
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
@@ -218,11 +238,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Servo khởi tạo
-  myServo.attach(SERVO_PIN);
-  myServo.write(currentAngle);
-  lastMoveTime = millis();
 }
 
 void loop() {
@@ -238,25 +253,26 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long now = millis();
-  if (now - lastMoveTime >= 1000) { // 1 giây
-    lastMoveTime = now;
-    currentAngle += direction;
-    if (currentAngle >= 180) {
-      currentAngle = 180;
-      direction = -1;
-    } else if (currentAngle <= 0) {
-      currentAngle = 0;
-      direction = 1;
+  // Điều khiển servo quay từ 0 tới 180 độ và ngược lại, cập nhật mỗi 1 giây
+  if (millis() - lastServoUpdate >= 1000) {
+    // Cập nhật góc
+    servoAngle += servoDirection;
+    if (servoAngle >= 180) {
+      servoAngle = 180;
+      servoDirection = -1;
+    } else if (servoAngle <= 0) {
+      servoAngle = 0;
+      servoDirection = 1;
     }
-    myServo.write(currentAngle);
-    // Hiển thị góc lên OLED
+    myservo.write(servoAngle);
+    // Hiển thị góc hiện tại lên OLED
     display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 20);
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0,0);
     display.print("Goc: ");
-    display.print(currentAngle);
-    display.print((char)247); // ký hiệu độ
+    display.print(servoAngle);
     display.display();
+    lastServoUpdate = millis();
   }
 }
