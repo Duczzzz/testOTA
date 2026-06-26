@@ -62,12 +62,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-// Biến điều khiển servo
-int servoAngle = 0;
-int servoDirection = 1; // 1: tăng, -1: giảm
-unsigned long lastServoUpdate = 0;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -151,6 +145,21 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  // Khởi tạo ngẫu nhiên dựa trên nhiễu analog
+  randomSeed(analogRead(0));
+  // Đặt vị trí servo ban đầu
+  myservo.write(0);
+  // Hiển thị tiêu đề và góc ban đầu
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Servo Angle:");
+  display.setCursor(0,20);
+  display.print("0 deg");
+  display.display();
+  delay(500);
+  // Tiếp tục các khởi tạo mặc định
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -169,18 +178,6 @@ void setup() {
   ESP32PWM::allocateTimer(3);
   myservo.setPeriodHertz(50);
   myservo.attach(servoPin, 1000, 2000);
-  // Đặt góc ban đầu cho servo và hiển thị lên OLED
-  servoAngle = 0;
-  servoDirection = 1;
-  myservo.write(servoAngle);
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Goc: ");
-  display.print(servoAngle);
-  display.display();
-
   display.clearDisplay();
   display.setCursor(25, 30);
   display.print("NUKEDASHBOARD");
@@ -253,26 +250,19 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  // Điều khiển servo quay từ 0 tới 180 độ và ngược lại, cập nhật mỗi 1 giây
-  if (millis() - lastServoUpdate >= 1000) {
-    // Cập nhật góc
-    servoAngle += servoDirection;
-    if (servoAngle >= 180) {
-      servoAngle = 180;
-      servoDirection = -1;
-    } else if (servoAngle <= 0) {
-      servoAngle = 0;
-      servoDirection = 1;
-    }
-    myservo.write(servoAngle);
-    // Hiển thị góc hiện tại lên OLED
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.print("Goc: ");
-    display.print(servoAngle);
-    display.display();
-    lastServoUpdate = millis();
-  }
+  // Tạo góc ngẫu nhiên cho servo (0-180 độ)
+  int angle = random(0, 181);
+  myservo.write(angle);
+  // Hiển thị góc hiện tại lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Servo Angle:");
+  display.setCursor(0,20);
+  display.print(angle);
+  display.print(" deg");
+  display.display();
+  // Đợi một thời gian trước khi thay đổi lại
+  delay(2000);
 }
