@@ -57,11 +57,11 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-bool ledState = false;
-const int buttonPin = 10; // SW8
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 50;
-int lastButtonReading = HIGH;
+
+const int BTN_SW11 = 14;          // SW11 pin
+unsigned long startTime = 0;      // thời gian bắt đầu tính uptime
+unsigned long lastColorChange = 0;
+unsigned long lastDisplayUpdate = 0;
 
 void getupdate()
 {
@@ -177,7 +177,14 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(BTN_SW11, INPUT_PULLUP);          // cấu hình nút SW11
+  randomSeed(analogRead(0));                // khởi tạo seed ngẫu nhiên
+  startTime = millis();                     // khởi tạo thời gian uptime
+  lastColorChange = millis();               // khởi tạo thời gian đổi màu
+  // màu LED ngẫu nhiên ban đầu
+  led.setPixelColor(0, led.Color(random(0,256), random(0,256), random(0,256)));
+  led.show();
+
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -216,14 +223,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-
-  // Khởi tạo trạng thái LED và hiển thị lên OLED
-  ledState = false;
-  digitalWrite(LED, LOW);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
-  display.display();
 }
 
 void loop() {
@@ -239,21 +238,38 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  int reading = digitalRead(buttonPin);
-  if (reading != lastButtonReading) {
-    lastDebounceTime = millis();
+  // Kiểm tra nút SW11 (reset uptime)
+  if (digitalRead(BTN_SW11) == LOW) {
+    startTime = millis();          // reset thời gian tính uptime
+    display.clearDisplay();        // xóa màn hình để cập nhật lại nhanh
+    delay(200);                    // debounce ngắn
   }
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != ledState) {
-      if (reading == LOW) { // nút được nhấn
-        ledState = !ledState;
-        digitalWrite(LED, ledState ? HIGH : LOW);
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.print(ledState ? "LED ON" : "LED OFF");
-        display.display();
-      }
-    }
+
+  unsigned long now = millis();
+
+  // Cập nhật màu LED mỗi 10 giây
+  if (now - lastColorChange >= 10000) {
+    led.setPixelColor(0, led.Color(random(0,256), random(0,256), random(0,256)));
+    led.show();
+    lastColorChange = now;
   }
-  lastButtonReading = reading;
+
+  // Cập nhật hiển thị uptime mỗi giây
+  if (now - lastDisplayUpdate >= 1000) {
+    unsigned long elapsed = now - startTime;
+    unsigned int hours = (elapsed / 3600000UL);
+    unsigned int minutes = (elapsed % 3600000UL) / 60000UL;
+    unsigned int seconds = (elapsed % 60000UL) / 1000UL;
+
+    char timeStr[9];
+    sprintf(timeStr, "%02u:%02u:%02u", hours, minutes, seconds);
+
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(0, 20);
+    display.print(timeStr);
+    display.display();
+
+    lastDisplayUpdate = now;
+  }
 }
