@@ -1,3 +1,22 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -17,7 +36,6 @@ const char* pass = "14042004";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
-#define SERVO_PIN 4
 
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
@@ -41,11 +59,12 @@ FirebaseConfig config;
 int checkupdate = 0;
 int demwf = 0;
 
+// Servo setup
+#define SERVO_PIN 16
 Servo myServo;
 int currentAngle = 0;
-int direction = 1;
-unsigned long lastUpdate = 0;
-const unsigned long interval = 1000;
+int direction = 1; // 1 = increasing, -1 = decreasing
+unsigned long lastMoveTime = 0;
 
 void getupdate()
 {
@@ -200,14 +219,10 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  // Khởi tạo servo
+  // Servo khởi tạo
   myServo.attach(SERVO_PIN);
   myServo.write(currentAngle);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Goc: ");
-  display.print(currentAngle);
-  display.display();
+  lastMoveTime = millis();
 }
 
 void loop() {
@@ -224,8 +239,8 @@ void loop() {
     Xây dựng cơ chế xử lý của bạn tại đây
   */
   unsigned long now = millis();
-  if (now - lastUpdate >= interval) {
-    lastUpdate = now;
+  if (now - lastMoveTime >= 1000) { // 1 giây
+    lastMoveTime = now;
     currentAngle += direction;
     if (currentAngle >= 180) {
       currentAngle = 180;
@@ -235,10 +250,13 @@ void loop() {
       direction = 1;
     }
     myServo.write(currentAngle);
+    // Hiển thị góc lên OLED
     display.clearDisplay();
-    display.setCursor(0,0);
+    display.setTextSize(2);
+    display.setCursor(0, 20);
     display.print("Goc: ");
     display.print(currentAngle);
+    display.print((char)247); // ký hiệu độ
     display.display();
   }
 }
