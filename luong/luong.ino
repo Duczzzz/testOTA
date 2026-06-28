@@ -62,6 +62,14 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+const int btnSW8 = 10;
+bool lastBtnState = HIGH;
+unsigned long lastDebounce = 0;
+const unsigned long debounceDelay = 50;
+struct ColorInfo{uint8_t r,g,b; const char* name;};
+ColorInfo colors[4] = {{255,0,0,"Red"},{0,255,0,"Green"},{0,0,255,"Blue"},{255,255,0,"Yellow"}};
+int colorIndex = 0;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -142,7 +150,9 @@ void getupdate()
 }
 
 void setup() {
-  /* Người dùng build code tại đây */
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -180,6 +190,14 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
+  pinMode(btnSW8, INPUT_PULLUP);
+  led.setPixelColor(0, led.Color(colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b));
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colors[colorIndex].name);
+  display.display();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -218,8 +236,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,LOW);
 }
 
 void loop() {
@@ -232,13 +248,22 @@ void loop() {
     display.display();
     getupdate();
   }
-  /* Xây dựng cơ chế xử lý của bạn tại đây */
-  static bool ledState = false;
-  ledState = !ledState;
-  digitalWrite(LED, ledState ? HIGH : LOW);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  if(ledState) { display.print("LED ON"); } else { display.print("LED OFF"); }
-  display.display();
-  delay(2000);
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  int reading = digitalRead(btnSW8);
+  if (reading != lastBtnState) { lastDebounce = millis(); }
+  if ((millis() - lastDebounce) > debounceDelay) {
+    if (reading == LOW && lastBtnState == HIGH) {
+      colorIndex = (colorIndex + 1) % 4;
+      led.setPixelColor(0, led.Color(colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b));
+      led.show();
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.print("Mau: ");
+      display.print(colors[colorIndex].name);
+      display.display();
+    }
+  }
+  lastBtnState = reading;
 }
