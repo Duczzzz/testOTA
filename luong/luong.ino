@@ -1,23 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
-// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -88,8 +68,7 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%
-", percent);
+              Serial.printf("OTA %d%%\n", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -211,9 +190,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s
-
-", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -223,19 +200,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.println(" C");
-  display.print("Hum: ");
-  display.print(humidity);
-  display.println(" %");
-  display.display();
-  if (temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
-  led.show();
 }
 
 void loop() {
@@ -257,12 +221,14 @@ void loop() {
   display.setCursor(0,0);
   display.print("Temp: ");
   display.print(temperature);
-  display.println(" C");
+  display.print((char)176);
+  display.print("C");
+  display.setCursor(0,10);
   display.print("Hum: ");
   display.print(humidity);
-  display.println(" %");
+  display.print("%");
   display.display();
-  if (temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
+  if (temperature > 36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
   led.show();
   delay(2000);
 }
