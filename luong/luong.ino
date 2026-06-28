@@ -62,14 +62,11 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-const int btnSW8 = 10;
-bool lastBtnState = HIGH;
-unsigned long lastDebounce = 0;
-const unsigned long debounceDelay = 50;
-struct ColorInfo{uint8_t r,g,b; const char* name;};
-ColorInfo colors[4] = {{255,0,0,"Red"},{0,255,0,"Green"},{0,0,255,"Blue"},{255,255,0,"Yellow"}};
+#define SW8_PIN 10
 int colorIndex = 0;
-
+uint32_t colors[4];
+const char* colorNames[4];
+bool lastSw8State = HIGH;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -190,13 +187,21 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(btnSW8, INPUT_PULLUP);
-  led.setPixelColor(0, led.Color(colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b));
+  pinMode(SW8_PIN, INPUT_PULLUP);
+  colors[0] = led.Color(255,0,0);
+  colors[1] = led.Color(0,255,0);
+  colors[2] = led.Color(0,0,255);
+  colors[3] = led.Color(255,255,0);
+  colorNames[0] = "Do";
+  colorNames[1] = "Xanh";
+  colorNames[2] = "Xanh Duong";
+  colorNames[3] = "Vang";
+  led.setPixelColor(0, colors[colorIndex]);
   led.show();
   display.clearDisplay();
   display.setCursor(0,0);
   display.print("Mau: ");
-  display.print(colors[colorIndex].name);
+  display.print(colorNames[colorIndex]);
   display.display();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
@@ -251,19 +256,17 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  int reading = digitalRead(btnSW8);
-  if (reading != lastBtnState) { lastDebounce = millis(); }
-  if ((millis() - lastDebounce) > debounceDelay) {
-    if (reading == LOW && lastBtnState == HIGH) {
-      colorIndex = (colorIndex + 1) % 4;
-      led.setPixelColor(0, led.Color(colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b));
-      led.show();
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.print("Mau: ");
-      display.print(colors[colorIndex].name);
-      display.display();
-    }
+  bool currentSw8State = digitalRead(SW8_PIN);
+  if (lastSw8State == HIGH && currentSw8State == LOW) {
+    colorIndex = (colorIndex + 1) % 4;
+    led.setPixelColor(0, colors[colorIndex]);
+    led.show();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("Mau: ");
+    display.print(colorNames[colorIndex]);
+    display.display();
+    delay(200);
   }
-  lastBtnState = reading;
+  lastSw8State = currentSw8State;
 }
