@@ -223,6 +223,19 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.println(" C");
+  display.print("Hum: ");
+  display.print(humidity);
+  display.println(" %");
+  display.display();
+  if (temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
+  led.show();
 }
 
 void loop() {
@@ -238,28 +251,18 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temp = bme.readTemperature();
-  float hum = bme.readHumidity();
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
   display.clearDisplay();
-  display.setTextSize(1);
   display.setCursor(0,0);
   display.print("Temp: ");
-  display.print(temp);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
+  display.print(temperature);
+  display.println(" C");
   display.print("Hum: ");
-  display.print(hum);
-  display.print("%");
+  display.print(humidity);
+  display.println(" %");
   display.display();
-  if (temp>36)
-  {
-    led.setPixelColor(0, led.Color(255,0,0));
-  }
-  else
-  {
-    led.setPixelColor(0, led.Color(0,255,0));
-  }
+  if (temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
   led.show();
-  delay(1000);
+  delay(2000);
 }
