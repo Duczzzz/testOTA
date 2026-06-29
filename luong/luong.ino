@@ -62,11 +62,12 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-#define SW8_PIN 10
+uint32_t colors[] = {led.Color(255,0,0),led.Color(0,255,0),led.Color(0,0,255),led.Color(255,255,0),led.Color(0,255,255),led.Color(255,0,255),led.Color(255,255,255)};
+const char* colorNames[] = {"Red","Green","Blue","Yellow","Cyan","Magenta","White"};
 int colorIndex = 0;
-uint32_t colors[4];
-const char* colorNames[4];
-bool lastSw8State = HIGH;
+unsigned long lastChange = 0;
+const unsigned long interval = 2000;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -92,23 +93,15 @@ void getupdate()
       {
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
-
               Serial.printf("OTA %d%%\n", percent);
-
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
               display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(
-                    2,
-                    32,
-                    (percent * 116) / 100,
-                    6,
-                    SSD1306_WHITE);
+              display.fillRect(2,32,(percent * 116) / 100,6,SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
@@ -147,14 +140,12 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
+  /* Người dùng build code tại đây */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
   led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.setPixelColor(0, colors[colorIndex]);
   led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
@@ -187,22 +178,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(SW8_PIN, INPUT_PULLUP);
-  colors[0] = led.Color(255,0,0);
-  colors[1] = led.Color(0,255,0);
-  colors[2] = led.Color(0,0,255);
-  colors[3] = led.Color(255,255,0);
-  colorNames[0] = "Do";
-  colorNames[1] = "Xanh";
-  colorNames[2] = "Xanh Duong";
-  colorNames[3] = "Vang";
-  led.setPixelColor(0, colors[colorIndex]);
-  led.show();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colorNames[colorIndex]);
-  display.display();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -241,6 +216,13 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  /* Hiển thị màu hiện tại */
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colorNames[colorIndex]);
+  display.display();
+  lastChange = millis();
 }
 
 void loop() {
@@ -253,12 +235,9 @@ void loop() {
     display.display();
     getupdate();
   }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  bool currentSw8State = digitalRead(SW8_PIN);
-  if (lastSw8State == HIGH && currentSw8State == LOW) {
-    colorIndex = (colorIndex + 1) % 4;
+  /* Xây dựng cơ chế xử lý của bạn tại đây */
+  if (millis() - lastChange >= interval) {
+    colorIndex = (colorIndex + 1) % 7;
     led.setPixelColor(0, colors[colorIndex]);
     led.show();
     display.clearDisplay();
@@ -266,7 +245,6 @@ void loop() {
     display.print("Mau: ");
     display.print(colorNames[colorIndex]);
     display.display();
-    delay(200);
+    lastChange = millis();
   }
-  lastSw8State = currentSw8State;
 }
