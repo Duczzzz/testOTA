@@ -68,4 +68,5 @@ jobs:
           git add firmware_$USER.ino.bin
           git commit -m "update firmware bin" || echo "No changes"
 
-          git push
+          git pull --rebase origin main
+          git push origin main
