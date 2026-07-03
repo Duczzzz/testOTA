@@ -1,3 +1,23 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
+// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -9,7 +29,6 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
-#include <DHT.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
@@ -18,6 +37,7 @@ const char* pass = "04072009";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
+#define SW8_PIN 10
 
 Servo myservo;
 #define servoPin 17
@@ -43,14 +63,14 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
+int colorIndex = 0;
+const uint32_t colors[4] = {led.Color(255,0,0),led.Color(0,255,0),led.Color(0,0,255),led.Color(255,255,0)};
+const char* colorNames[4] = {"Do","Xanh","Xanh Duong","Vang"};
 
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -121,121 +141,117 @@ void getupdate()
 }
 
 void setup() {
-    /*
-      Người dùng build code tại đây
-    */
-    I2C_BME.begin(8,18);
-    I2C_OLED.begin(13,12);
-    led.begin();
-    led.setBrightness(50);
+  /*
+    Người dùng build code tại đây
+  */
+  I2C_BME.begin(8,18);
+  I2C_OLED.begin(13,12);
+  led.begin();
+  led.setBrightness(50);
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    Serial.println("OLED fail!");
+    while (1);
+  }
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50);
+  myservo.attach(servoPin, 1000, 2000);
+  display.clearDisplay();
+  display.setCursor(25, 30);
+  display.print("NUKEDASHBOARD");
+  if (!bme.begin(0x76,&I2C_BME)) {
+    display.clearDisplay();
+    Serial.println("Không tìm thấy BME280!");
+    display.setCursor(0, 0);
+    display.printf("Khong tim thay BME280!");
+    display.display();
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    while (1);
+  }
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.display();
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  pinMode(SW8_PIN,INPUT_PULLUP);
+  led.setPixelColor(0,colors[colorIndex]);
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau: ");
+  display.print(colorNames[colorIndex]);
+  display.display();
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
+  WiFi.begin(ssid,pass);
+  while (WiFi.status() != WL_CONNECTED) {
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();
-    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-        led.setPixelColor(0, led.Color(255, 0, 0));
-        led.show();
-        Serial.println("OLED fail!");
-        while (1);
+    Serial.println("dang khoi dong WiFi...");
+    display.setCursor(10,0);
+    display.print("Dang ket noi WiFi");
+    display.setCursor(0,20);
+    display.printf("SSID: %s",ssid);
+    if(demwf < 80) {
+      display.setCursor(demwf,30);
+      display.print(".");
+      Serial.println(".");
     }
-    ESP32PWM::allocateTimer(0);
-    ESP32PWM::allocateTimer(1);
-    ESP32PWM::allocateTimer(2);
-    ESP32PWM::allocateTimer(3);
-    myservo.setPeriodHertz(50);
-    myservo.attach(servoPin, 1000, 2000);
-    display.clearDisplay();
-    display.setCursor(25, 30);
-    display.print("NUKEDASHBOARD");
-    if (!bme.begin(0x76,&I2C_BME)) {
-        display.clearDisplay();
-        Serial.println("Không tìm thấy BME280!");
-        display.setCursor(0, 0);
-        display.printf("Khong tim thay BME280!");
-        display.display();
-        led.setPixelColor(0, led.Color(255, 0, 0));
-        led.show();
-        while (1);
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
     }
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
+    demwf+=5;
     display.display();
-    delay(1000);
-    pinMode(LED,OUTPUT);
-    digitalWrite(LED,0);
-    Serial.begin(115200);
-    Serial.println("He thong dang khoi dong...");
-    display.display();
-    display.clearDisplay();
-    WiFi.begin(ssid,pass);
-    while (WiFi.status() != WL_CONNECTED) {
-        led.setPixelColor(0, led.Color(255, 0, 255));
-        led.show();
-        Serial.println("dang khoi dong WiFi...");
-        display.setCursor(10,0);
-        display.print("Dang ket noi WiFi");
-        display.setCursor(0,20);
-        display.printf("SSID: %s",ssid);
-        if(demwf < 80) {
-            display.setCursor(demwf,30);
-            display.print(".");
-            Serial.println(".");
-        }
-        else if(demwf > 80) {
-            display.clearDisplay();
-            demwf = 0;
-        }
-        demwf+=5;
-        display.display();
-        digitalWrite(LED,1);
-        delay(300);
-    }
-    digitalWrite(LED,0);
-    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-    config.database_url = DATABASE_URL;
-    config.signer.tokens.legacy_token = DATABASE_SECRET;
-    Firebase.reconnectWiFi(true);
-    fbdo.setBSSLBufferSize(512, 512);
-    Firebase.begin(&config, &auth);
-    led.setPixelColor(0, led.Color(0, 255, 0));
-    led.show();
-    display.clearDisplay();
-    display.display();
-    dht.begin();
+    digitalWrite(LED,1);
+    delay(300);
+  }
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+  display.clearDisplay();
+  display.display();
 }
 
 void loop() {
-    if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
-    if(checkupdate == 1) {
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setCursor(0, 0);
-        display.print("UPDATE OTA");
-        display.display();
-        getupdate();
-    }
-    /*
-      Xây dựng cơ chế xử lý của bạn tại đây
-    */
-    float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature();
-    if (isnan(humidity) || isnan(temperature)) {
-        Serial.println("Failed to read from DHT sensor!");
-        return;
-    }
-    if (temperature > 32) {
-        digitalWrite(LED, HIGH);
-    } else {
-        digitalWrite(LED, LOW);
-    }
+  if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  if(digitalRead(SW8_PIN)==LOW) {
+    colorIndex=(colorIndex+1)%4;
+    led.setPixelColor(0,colors[colorIndex]);
+    led.show();
     display.clearDisplay();
     display.setCursor(0,0);
-    display.print("Nhiet do: ");
-    display.print(temperature);
-    display.print((char)223);
-    display.print("C");
-    display.setCursor(0,20);
-    display.print("Do am: ");
-    display.print(humidity);
-    display.print("%");
+    display.print("Mau: ");
+    display.print(colorNames[colorIndex]);
     display.display();
-    delay(2000);
+    while(digitalRead(SW8_PIN)==LOW){delay(10);}
+    delay(200);
+  }
 }
