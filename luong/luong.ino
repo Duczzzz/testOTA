@@ -9,7 +9,6 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
-#include <DHT.h>
 
 const char* ssid = "Su Ni";
 const char* pass = "04072009";
@@ -43,15 +42,12 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
+unsigned long previousMillis = 0;
+bool ledState = false;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -73,23 +69,15 @@ void getupdate()
       {
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
-
               Serial.printf("OTA %d%%\n", percent);
-
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
-
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
               display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(
-                    2,
-                    32,
-                    (percent * 116) / 100,
-                    6,
-                    SSD1306_WHITE);
+              display.fillRect(2,32,(percent * 116) / 100,6,SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
@@ -136,7 +124,7 @@ void setup() {
   led.begin();
   led.setBrightness(50);
   led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
+  led.show();
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -206,7 +194,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  dht.begin();
 }
 
 void loop() {
@@ -222,20 +209,5 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  if(isnan(t)||isnan(h)){return;}
-  if(t>32){led.setPixelColor(0, led.Color(255,0,0));}else{led.setPixelColor(0, led.Color(0,255,0));}
-  led.show();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Temp: ");
-  display.print(t);
-  display.print(" C");
-  display.setCursor(0,10);
-  display.print("Hum: ");
-  display.print(h);
-  display.print(" %");
-  display.display();
-  delay(2000);
+  unsigned long currentMillis = millis(); if(currentMillis - previousMillis >= 2000) { previousMillis = currentMillis; ledState = !ledState; digitalWrite(LED, ledState); display.clearDisplay(); display.setCursor(0,0); display.print(ledState?"LED ON":"LED OFF"); display.display(); }
 }
