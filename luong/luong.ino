@@ -37,7 +37,6 @@ const char* pass = "04072009";
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
 
 #define LED 2
-#define SW8_PIN 10
 
 Servo myservo;
 #define servoPin 17
@@ -63,10 +62,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-int colorIndex = 0;
-const uint32_t colors[4] = {led.Color(255,0,0),led.Color(0,255,0),led.Color(0,0,255),led.Color(255,255,0)};
-const char* colorNames[4] = {"Do","Xanh","Xanh Duong","Vang"};
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -98,11 +93,17 @@ void getupdate()
               display.clearDisplay();
               display.setCursor(0,0);
               display.print("Updating");
+
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
               display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(2,32,(percent * 116) / 100,6,SSD1306_WHITE);
+              display.fillRect(
+                    2,
+                    32,
+                    (percent * 116) / 100,
+                    6,
+                    SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
@@ -141,9 +142,6 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -181,14 +179,6 @@ void setup() {
   delay(1000);
   pinMode(LED,OUTPUT);
   digitalWrite(LED,0);
-  pinMode(SW8_PIN,INPUT_PULLUP);
-  led.setPixelColor(0,colors[colorIndex]);
-  led.show();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Mau: ");
-  display.print(colorNames[colorIndex]);
-  display.display();
   Serial.begin(115200);
   Serial.println("He thong dang khoi dong...");
   display.display();
@@ -231,27 +221,5 @@ void setup() {
 
 void loop() {
   if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  if(digitalRead(SW8_PIN)==LOW) {
-    colorIndex=(colorIndex+1)%4;
-    led.setPixelColor(0,colors[colorIndex]);
-    led.show();
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("Mau: ");
-    display.print(colorNames[colorIndex]);
-    display.display();
-    while(digitalRead(SW8_PIN)==LOW){delay(10);}
-    delay(200);
-  }
-}
+  if(checkupdate == 1) { display.clearDisplay(); display.setTextSize(1); display.setCursor(0,0); display.print("UPDATE OTA"); display.display(); getupdate(); }
+  float temp = bme.readTemperature(); float hum = bme.readHumidity(); display.clearDisplay(); display.setCursor(0,0); display.print("Temp: "); display.print(temp); display.print((char)176); display.print("C"); display.setCursor(0,10); display.print("Hum: "); display.print(hum); display.print("%"); display.display(); if(temp>36) { led.setPixelColor(0,
