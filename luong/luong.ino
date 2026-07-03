@@ -1,23 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
-// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -62,10 +42,15 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+unsigned long lastColorChange = 0;
+int colorIndex = 0;
+const uint32_t colors[] = {led.Color(255,0,0),led.Color(0,255,0),led.Color(0,0,255),led.Color(255,255,0),led.Color(0,255,255),led.Color(255,0,255),led.Color(255,255,255)};
+const char* colorNames[] = {"Red","Green","Blue","Yellow","Cyan","Magenta","White"};
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -150,7 +135,7 @@ void setup() {
   led.begin();
   led.setBrightness(50);
   led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
+  led.show();
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -220,9 +205,8 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Người dùng build code tại đây
-  led.setPixelColor(0, led.Color(0,255,0));
-  led.show();
+  // Initialize LED color and display
+  led.setPixelColor(0, colors[colorIndex]); led.show(); display.clearDisplay(); display.setCursor(0,0); display.print("Color: "); display.print(colorNames[colorIndex]); display.display(); lastColorChange = millis();
 }
 
 void loop() {
@@ -238,25 +222,5 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0,0);
-  display.print("Nhiet do: ");
-  display.print(temperature);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
-  display.print("Do am: ");
-  display.print(humidity);
-  display.print("%");
-  display.display();
-  if(temperature>36){
-    led.setPixelColor(0, led.Color(255,0,0));
-  }else{
-    led.setPixelColor(0, led.Color(0,255,0));
-  }
-  led.show();
-  delay(1000);
+  if(millis() - lastColorChange >= 2000) { lastColorChange = millis(); colorIndex = (colorIndex + 1) % 7; led.setPixelColor(0, colors[colorIndex]); led.show(); display.clearDisplay(); display.setCursor(0,0); display.print("Color: "); display.print(colorNames[colorIndex]); display.display(); }
 }
