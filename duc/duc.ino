@@ -1,3 +1,23 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
+// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -9,7 +29,6 @@
 #include <Update.h>
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
-#include <DHT.h>
 
 const char* ssid = "DUC";
 const char* pass = "14042004";
@@ -43,11 +62,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-#define DHTPIN 11
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -131,7 +145,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  dht.begin();
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -181,4 +194,71 @@ void setup() {
     display.setCursor(10,0);
     display.print("Dang ket noi WiFi");
     display.setCursor(0,20);
-    display.printf("SSID:
+    display.printf("SSID: %s",ssid);
+    if(demwf < 80) {
+      display.setCursor(demwf,30);
+      display.print(".");
+      Serial.println(".");
+    }
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
+    }
+    demwf+=5;
+    display.display();
+    digitalWrite(LED,1);
+    delay(300);
+  }
+  digitalWrite(LED,0);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  Firebase.reconnectWiFi(true);
+  fbdo.setBSSLBufferSize(512, 512);
+  Firebase.begin(&config, &auth);
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+  display.clearDisplay();
+  display.display();
+}
+
+void loop() {
+  if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  float temperature = bme.readTemperature(); // °C
+  float humidity = bme.readHumidity();       // %
+
+  // Cập nhật màu LED RGB dựa trên nhiệt độ
+  if (temperature > 36.0) {
+    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
+  } else {
+    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
+  }
+  led.show();
+
+  // Hiển thị lên OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Nhiet do: ");
+  display.print(temperature, 1);
+  display.print((char)223); // ký tự độ
+  display.print("C");
+  display.setCursor(0, 15);
+  display.print("Do am:   ");
+  display.print(humidity, 1);
+  display.print("%");
+  display.display();
+
+  delay(2000); // Cập nhật mỗi 2 giây
+}
