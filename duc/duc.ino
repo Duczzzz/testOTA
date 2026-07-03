@@ -1,23 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
-// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -65,7 +45,7 @@ int demwf = 0;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/duc/updateOTA",0);  
+    Firebase.setInt(fbdo, "/users/duc/updateOTA",0);
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
@@ -97,44 +77,39 @@ void getupdate()
               display.setCursor(0,20);
               display.print(percent);
               display.print("%");
-              display.drawRect(0, 30, 120, 10, SSD1306_WHITE);
-              display.fillRect(
-                    2,
-                    32,
-                    (percent * 116) / 100,
-                    6,
-                    SSD1306_WHITE);
+              display.drawRect(0, 30, 100, 10, SSD1306_WHITE);
+              display.fillRect(2, 32, (percent * 96) / 100, 6, SSD1306_WHITE);
               display.display();
           });
           size_t written = Update.writeStream(client);
           display.clearDisplay();
-      if (written == Update.size()) {
-        Serial.println("Update ghi du du lieu.");
-        if (Update.end()) {
-          if (Update.isFinished()) {
-            Serial.println("Update thanh cong. Dang khoi dong lai...");
-            display.clearDisplay();
-            display.setCursor(0, 10);
-            display.print("Update thanh cong");
-            display.setCursor(0, 30);
-            display.print("Rebooting...");
-            display.display();
-            delay(1000);
-            ESP.restart();
+          if (written == Update.size()) {
+            Serial.println("Update ghi du du lieu.");
+            if (Update.end()) {
+              if (Update.isFinished()) {
+                Serial.println("Update thanh cong. Dang khoi dong lai...");
+                display.clearDisplay();
+                display.setCursor(0, 10);
+                display.print("Update thanh cong");
+                display.setCursor(0, 30);
+                display.print("Rebooting...");
+                display.display();
+                delay(1000);
+                ESP.restart();
+              } else {
+                Serial.println("Update chua hoan tat!");
+              }
+            } else {
+              Serial.print("Update failed: ");
+              Serial.println(Update.errorString());
+            }
           } else {
-            Serial.println("Update chua hoan tat!");
+            Serial.println("Ghi firmware bi thieu du lieu!");
           }
         } else {
-          Serial.print("Update failed: ");
-          Serial.println(Update.errorString());
+          Serial.println("Khong the bat dau OTA!");
         }
-      } else {
-        Serial.println("Ghi firmware bi thieu du lieu!");
-      }
     } else {
-      Serial.println("Khong the bat dau OTA!");
-    }
-    }else {
       Serial.print("Tai firmware that bai. HTTP code: ");
       Serial.println(httpCode);
     }
@@ -142,127 +117,122 @@ void getupdate()
 }
 
 void setup() {
-  /*
-    Người dùng build code tại đây
-  */
-  // Khởi tạo ngẫu nhiên dựa trên nhiễu analog
-  randomSeed(analogRead(0));
-  // Đặt vị trí servo ban đầu
-  myservo.write(0);
-  // Hiển thị tiêu đề và góc ban đầu
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Servo Angle:");
-  display.setCursor(0,20);
-  display.print("0 deg");
-  display.display();
-  delay(500);
-  // Tiếp tục các khởi tạo mặc định
-  I2C_BME.begin(8,18);
-  I2C_OLED.begin(13,12);
-  led.begin();
-  led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
-  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    Serial.println("OLED fail!");
-    while (1);
-  }
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
-  myservo.setPeriodHertz(50);
-  myservo.attach(servoPin, 1000, 2000);
-  display.clearDisplay();
-  display.setCursor(25, 30);
-  display.print("NUKEDASHBOARD");
-  if (!bme.begin(0x76,&I2C_BME)) {
-    display.clearDisplay();
-    Serial.println("Không tìm thấy BME280!");
-    display.setCursor(0, 0);
-    display.printf("Khong tim thay BME280!");
-    display.display();
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    while (1);
-  }
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.display();
-  delay(1000);
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
-  Serial.begin(115200);
-  Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
-  WiFi.begin(ssid,pass);
-  while (WiFi.status() != WL_CONNECTED) {
+    /* Người dùng build code tại đây */
+    I2C_BME.begin(8,18);
+    I2C_OLED.begin(13,12);
+    led.begin();
+    led.setBrightness(50);
     led.setPixelColor(0, led.Color(255, 0, 255));
     led.show();
-    Serial.println("dang khoi dong WiFi...");
-    display.setCursor(10,0);
-    display.print("Dang ket noi WiFi");
-    display.setCursor(0,20);
-    display.printf("SSID: %s",ssid);
-    if(demwf < 80) {
-      display.setCursor(demwf,30);
-      display.print(".");
-      Serial.println(".");
+    if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+        led.setPixelColor(0, led.Color(255, 0, 0));
+        led.show();
+        Serial.println("OLED fail!");
+        while (1);
     }
-    else if(demwf > 80) {
-      display.clearDisplay();
-      demwf = 0;
+    ESP32PWM::allocateTimer(0);
+    ESP32PWM::allocateTimer(1);
+    ESP32PWM::allocateTimer(2);
+    ESP32PWM::allocateTimer(3);
+    myservo.setPeriodHertz(50);
+    myservo.attach(servoPin, 1000, 2000);
+    display.clearDisplay();
+    display.setCursor(25, 30);
+    display.print("NUKEDASHBOARD");
+    if (!bme.begin(0x76,&I2C_BME)) {
+        display.clearDisplay();
+        Serial.println("Không tìm thấy BME280!");
+        display.setCursor(0, 0);
+        display.printf("Khong tim thay BME280!");
+        display.display();
+        led.setPixelColor(0, led.Color(255, 0, 0));
+        led.show();
+        while (1);
     }
-    demwf+=5;
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
     display.display();
-    digitalWrite(LED,1);
-    delay(300);
-  }
-  digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
-  config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = DATABASE_SECRET;
-  Firebase.reconnectWiFi(true);
-  fbdo.setBSSLBufferSize(512, 512);
-  Firebase.begin(&config, &auth);
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
-  display.clearDisplay();
-  display.display();
+    delay(1000);
+    pinMode(LED,OUTPUT);
+    digitalWrite(LED,0);
+    Serial.begin(115200);
+    Serial.println("He thong dang khoi dong...");
+    display.display();
+    display.clearDisplay();
+    WiFi.begin(ssid,pass);
+    while (WiFi.status() != WL_CONNECTED) {
+        led.setPixelColor(0, led.Color(255, 0, 255));
+        led.show();
+        Serial.println("dang khoi dong WiFi...");
+        display.setCursor(10,0);
+        display.print("Dang ket noi WiFi");
+        display.setCursor(0,20);
+        display.printf("SSID: %s",ssid);
+        if(demwf < 80) {
+            display.setCursor(demwf,30);
+            display.print(".");
+            Serial.println(".");
+        } else if(demwf > 80) {
+            display.clearDisplay();
+            demwf = 0;
+        }
+        demwf+=5;
+        display.display();
+        digitalWrite(0,1);
+        delay(300);
+    }
+    digitalWrite(0,0);
+    Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+    config.database_url = DATABASE_URL;
+    config.signer.tokens.legacy_token = DATABASE_SECRET;
+    Firebase.reconnectWiFi(true);
+    fbdo.setBSSLBufferSize(512, 512);
+    Firebase.begin(&config, &auth);
+    led.setPixelColor(0, led.Color(0, 255, 0));
+    led.show();
+    display.clearDisplay();
+    display.display();
+    // Đọc giá trị ban đầu và hiển thị
+    float tempInit = bme.readTemperature(); 
+    float humInit = bme.readHumidity(); 
+    if (tempInit > 32) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); } 
+    led.show(); 
+    display.clearDisplay(); 
+    display.setCursor(0,0); 
+    display.print("Temp: "); 
+    display.print(temperature); 
+    display.print(" C"); 
+    display.setCursor(0,10); 
+    display.print("Hum: "); 
+    display.print(humidity); 
+    display.print(" %"); 
+    display.display();
 }
 
 void loop() {
-  if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
+    if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
+    if(checkupdate == 1) {
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(0, 0);
+        display.print("UPDATE OTA");
+        display.display();
+        getupdate();
+    }
+    /* Xây dựng cơ chế xử lý của bạn tại đây */
+    float temperature = bme.readTemperature(); 
+    float humidity = bme.readHumidity(); 
+    if (temperature > 32) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); } 
+    led.show(); 
+    display.clearDisplay(); 
+    display.setCursor(0,0); 
+    display.print("Temp: "); 
+    display.print(temperature); 
+    display.print(" C"); 
+    display.setCursor(0,10); 
+    display.print("Hum: "); 
+    display.print(humidity); 
+    display.print(" %"); 
     display.display();
-    getupdate();
-  }
-  /*
-    Xây dựng cơ chế xử lý của bạn tại đây
-  */
-  // Tạo góc ngẫu nhiên cho servo (0-180 độ)
-  int angle = random(0, 181);
-  myservo.write(angle);
-  // Hiển thị góc hiện tại lên OLED
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Servo Angle:");
-  display.setCursor(0,20);
-  display.print(angle);
-  display.print(" deg");
-  display.display();
-  // Đợi một thời gian trước khi thay đổi lại
-  delay(2000);
+    delay(1000);
 }
