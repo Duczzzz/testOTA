@@ -1,3 +1,23 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
+// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -15,45 +35,39 @@ const char* pass = "04072009";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
-
 #define LED 2
-
 Servo myservo;
 #define servoPin 17
-
 TwoWire I2C_BME = TwoWire(0);
 TwoWire I2C_OLED = TwoWire(1);
-
 #define i2c_Address 0x3c
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &I2C_OLED, OLED_RESET);
-
 Adafruit_BME280 bme;
-
 const char* firmwareUrl = "https://raw.githubusercontent.com/Duczzzz/testOTA/main/firmware_luong.ino.bin";
-
 #define DATABASE_URL "https://doantn-885dc-default-rtdb.firebaseio.com/"
 #define DATABASE_SECRET "rPb2lv5DjHze997hD9pxnzTzWJsir4wwdP1poStt"
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
-
 int checkupdate = 0;
 int demwf = 0;
-unsigned long previousMillis = 0;
-bool ledState = false;
+const uint32_t colors[] = {0xFF0000,0x00FF00,0x0000FF,0xFFFF00,0xFF00FF,0x00FFFF,0xFFFFFF,0x000000};
+const char* colorNames[] = {"Red","Green","Blue","Yellow","Magenta","Cyan","White","Off"};
+int colorIndex = 0;
+unsigned long lastChange = 0;
+const unsigned long changeInterval = 2000;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
-    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);
+    Firebase.setInt(fbdo, "/users/luong/updateOTA",0);  
     Serial.print("Firmware URL: ");
     Serial.println(firmwareUrl);
     HTTPClient http;
     http.begin(firmwareUrl);
     int httpCode = http.GET();
-
     if (httpCode == HTTP_CODE_OK)
     {
       WiFiClient& client = http.getStream();
@@ -82,39 +96,38 @@ void getupdate()
           });
           size_t written = Update.writeStream(client);
           display.clearDisplay();
-      if (written == Update.size()) {
-        Serial.println("Update ghi du du lieu.");
-        if (Update.end()) {
-          if (Update.isFinished()) {
-            Serial.println("Update thanh cong. Dang khoi dong lai...");
-            display.clearDisplay();
-            display.setCursor(0, 10);
-            display.print("Update thanh cong");
-            display.setCursor(0, 30);
-            display.print("Rebooting...");
-            display.display();
-            delay(1000);
-            ESP.restart();
+          if (written == Update.size()) {
+            Serial.println("Update ghi du du lieu.");
+            if (Update.end()) {
+              if (Update.isFinished()) {
+                Serial.println("Update thanh cong. Dang khoi dong lai...");
+                display.clearDisplay();
+                display.setCursor(0, 10);
+                display.print("Update thanh cong");
+                display.setCursor(0, 30);
+                display.print("Rebooting...");
+                display.display();
+                delay(1000);
+                ESP.restart();
+              } else {
+                Serial.println("Update chua hoan tat!");
+              }
+            } else {
+              Serial.print("Update failed: ");
+              Serial.println(Update.errorString());
+            }
           } else {
-            Serial.println("Update chua hoan tat!");
+            Serial.println("Ghi firmware bi thieu du lieu!");
           }
         } else {
-          Serial.print("Update failed: ");
-          Serial.println(Update.errorString());
+          Serial.println("Khong the bat dau OTA!");
         }
-      } else {
-        Serial.println("Ghi firmware bi thieu du lieu!");
-      }
-    } else {
-      Serial.println("Khong the bat dau OTA!");
-    }
     }else {
       Serial.print("Tai firmware that bai. HTTP code: ");
       Serial.println(httpCode);
     }
     http.end();
 }
-
 void setup() {
   /*
     Người dùng build code tại đây
@@ -124,7 +137,7 @@ void setup() {
   led.begin();
   led.setBrightness(50);
   led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();
+  led.show();  
   if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
     led.setPixelColor(0, led.Color(255, 0, 0));
     led.show();
@@ -194,8 +207,16 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  // Khởi tạo màu LED đầu tiên và hiển thị trên OLED
+  led.setPixelColor(0, colors[colorIndex]);
+  led.show();
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Mau hien tai: ");
+  display.print(colorNames[colorIndex]);
+  display.display();
+  lastChange = millis();
 }
-
 void loop() {
   if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
   if(checkupdate == 1) {
@@ -209,5 +230,16 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis(); if(currentMillis - previousMillis >= 2000) { previousMillis = currentMillis; ledState = !ledState; digitalWrite(LED, ledState); display.clearDisplay(); display.setCursor(0,0); display.print(ledState?"LED ON":"LED OFF"); display.display(); }
+  unsigned long now = millis();
+  if (now - lastChange >= changeInterval) {
+    lastChange = now;
+    colorIndex = (colorIndex + 1) % (sizeof(colors)/sizeof(colors[0]));
+    led.setPixelColor(0, colors[colorIndex]);
+    led.show();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print("Mau hien tai: ");
+    display.print(colorNames[colorIndex]);
+    display.display();
+  }
 }
