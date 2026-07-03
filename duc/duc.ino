@@ -1,23 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
-// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -220,6 +200,8 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
 }
 
 void loop() {
@@ -235,30 +217,24 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature(); // °C
-  float humidity = bme.readHumidity();       // %
-
-  // Cập nhật màu LED RGB dựa trên nhiệt độ
-  if (temperature > 36.0) {
-    led.setPixelColor(0, led.Color(255, 0, 0)); // Đỏ
-  } else {
-    led.setPixelColor(0, led.Color(0, 255, 0)); // Xanh lá
-  }
-  led.show();
-
-  // Hiển thị lên OLED
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
   display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.print("Nhiet do: ");
-  display.print(temperature, 1);
-  display.print((char)223); // ký tự độ
+  display.setCursor(0,0);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.print((char)176);
   display.print("C");
-  display.setCursor(0, 15);
-  display.print("Do am:   ");
-  display.print(humidity, 1);
+  display.setCursor(0,10);
+  display.print("Hum: ");
+  display.print(humidity);
   display.print("%");
   display.display();
-
-  delay(2000); // Cập nhật mỗi 2 giây
+  if(temperature>36) {
+    led.setPixelColor(0, led.Color(255,0,0));
+  } else {
+    led.setPixelColor(0, led.Color(0,255,0));
+  }
+  led.show();
+  delay(1000);
 }
