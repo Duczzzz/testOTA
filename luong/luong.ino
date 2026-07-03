@@ -142,6 +142,9 @@ void getupdate()
 }
 
 void setup() {
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -217,9 +220,43 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  // Người dùng build code tại đây
+  led.setPixelColor(0, led.Color(0,255,0));
+  led.show();
 }
 
 void loop() {
   if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) { display.clearDisplay(); display.setTextSize(1); display.setCursor(0,0); display.print("UPDATE OTA"); display.display(); getupdate(); }
-  float temp = bme.readTemperature(); float hum = bme.readHumidity(); display.clearDisplay(); display.setCursor(0,0); display.print("Temp: "); display.print(temp); display.print((char)176); display.print("C"); display.setCursor(0,10); display.print("Hum: "); display.print(hum); display.print("%"); display.display(); if(temp>36) { led.setPixelColor(0,
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Nhiet do: ");
+  display.print(temperature);
+  display.print((char)176);
+  display.print("C");
+  display.setCursor(0,10);
+  display.print("Do am: ");
+  display.print(humidity);
+  display.print("%");
+  display.display();
+  if(temperature>36){
+    led.setPixelColor(0, led.Color(255,0,0));
+  }else{
+    led.setPixelColor(0, led.Color(0,255,0));
+  }
+  led.show();
+  delay(1000);
+}
