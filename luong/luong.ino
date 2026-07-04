@@ -142,29 +142,72 @@ void getupdate()
 }
 
 void setup() {
-  // Người dùng build code tại đây
-  display.clearDisplay(); display.setCursor(0,0); display.print("Khoi dong..."); display.display(); 
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
-  led.begin(); led.setBrightness(50); led.setPixelColor(0, led.Color(255, 0, 255)); led.show();  
-  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) { led.setPixelColor(0, led.Color(255, 0, 0)); led.show(); Serial.println("OLED fail!"); while (1); }
+  led.begin();
+  led.setBrightness(50);
+  led.setPixelColor(0, led.Color(255, 0, 255));
+  led.show();  
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    Serial.println("OLED fail!");
+    while (1);
+  }
   ESP32PWM::allocateTimer(0);
   ESP32PWM::allocateTimer(1);
   ESP32PWM::allocateTimer(2);
   ESP32PWM::allocateTimer(3);
   myservo.setPeriodHertz(50);
   myservo.attach(servoPin, 1000, 2000);
-  display.clearDisplay(); display.setCursor(25, 30); display.print("NUKEDASHBOARD");
-  if (!bme.begin(0x76,&I2C_BME)) { display.clearDisplay(); Serial.println("Không tìm thấy BME280!"); display.setCursor(0, 0); display.printf("Khong tim thay BME280!"); display.display(); led.setPixelColor(0, led.Color(255, 0, 0)); led.show(); while (1); }
-  display.setTextSize(1); display.setTextColor(SSD1306_WHITE); display.display(); delay(1000);
-  pinMode(LED,OUTPUT); digitalWrite(LED,0);
-  Serial.begin(115200); Serial.println("He thong dang khoi dong..."); display.display(); display.clearDisplay();
+  display.clearDisplay();
+  display.setCursor(25, 30);
+  display.print("NUKEDASHBOARD");
+  if (!bme.begin(0x76,&I2C_BME)) {
+    display.clearDisplay();
+    Serial.println("Không tìm thấy BME280!");
+    display.setCursor(0, 0);
+    display.printf("Khong tim thay BME280!");
+    display.display();
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    led.show();
+    while (1);
+  }
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.display();
+  delay(1000);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,0);
+  Serial.begin(115200);
+  Serial.println("He thong dang khoi dong...");
+  display.display();
+  display.clearDisplay();
   WiFi.begin(ssid,pass);
   while (WiFi.status() != WL_CONNECTED) {
-    led.setPixelColor(0, led.Color(255, 0, 255)); led.show(); Serial.println("dang khoi dong WiFi..."); display.setCursor(10,0); display.print("Dang ket noi WiFi"); display.setCursor(0,20); display.printf("SSID: %s",ssid);
-    if(demwf < 80) { display.setCursor(demwf,30); display.print("."); Serial.println("."); }
-    else if(demwf > 80) { display.clearDisplay(); demwf = 0; }
-    demwf+=5; display.display(); digitalWrite(LED,1); delay(300);
+    led.setPixelColor(0, led.Color(255, 0, 255));
+    led.show();
+    Serial.println("dang khoi dong WiFi...");
+    display.setCursor(10,0);
+    display.print("Dang ket noi WiFi");
+    display.setCursor(0,20);
+    display.printf("SSID: %s",ssid);
+    if(demwf < 80) {
+      display.setCursor(demwf,30);
+      display.print(".");
+      Serial.println(".");
+    }
+    else if(demwf > 80) {
+      display.clearDisplay();
+      demwf = 0;
+    }
+    demwf+=5;
+    display.display();
+    digitalWrite(LED,1);
+    delay(300);
   }
   digitalWrite(LED,0);
   Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
@@ -173,12 +216,48 @@ void setup() {
   Firebase.reconnectWiFi(true);
   fbdo.setBSSLBufferSize(512, 512);
   Firebase.begin(&config, &auth);
-  led.setPixelColor(0, led.Color(0, 255, 0)); led.show(); display.clearDisplay(); display.display();
+  led.setPixelColor(0, led.Color(0, 255, 0));
+  led.show();
+  display.clearDisplay();
+  display.display();
+  // Hiển thị thông báo khởi tạo cảm biến
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("BME280 Ready");
+  display.display();
 }
 
 void loop() {
   if(Firebase.getInt(fbdo, "/users/luong/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) { display.clearDisplay(); display.setTextSize(1); display.setCursor(0, 0); display.print("UPDATE OTA"); display.display(); getupdate(); }
-  // Xây dựng cơ chế xử lý của bạn tại đây
-  float temperature = bme.readTemperature(); float humidity = bme.readHumidity(); display.clearDisplay(); display.setCursor(0,0); display.print("Nhiet do: "); display.print(temperature); display.print((char)176); display.print("C"); display.setCursor(0,10); display.print("Do am: "); display.print(humidity); display.print("%"); display.display(); if(temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); } led.show(); delay(2000);
+  if(checkupdate == 1) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("UPDATE OTA");
+    display.display();
+    getupdate();
+  }
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  float temperature = bme.readTemperature();
+  float humidity = bme.readHumidity();
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.print((char)176);
+  display.print("C");
+  display.setCursor(0,10);
+  display.print("Hum:  ");
+  display.print(humidity);
+  display.print("%");
+  display.display();
+  if(temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
+  led.show();
+  delay(2000);
 }
