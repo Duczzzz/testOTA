@@ -62,9 +62,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-unsigned long previousMillis = 0;
-const unsigned long interval = 2000;
-bool ledState = false;
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -91,8 +88,7 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%
-", percent);
+              Serial.printf("OTA %d%%\n", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -149,6 +145,11 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
+  digitalWrite(LED,LOW);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("LED OFF");
+  display.display();
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -214,9 +215,7 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s
-
-", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -225,13 +224,6 @@ void setup() {
   led.setPixelColor(0, led.Color(0, 255, 0));
   led.show();
   display.clearDisplay();
-  display.display();
-  previousMillis = 0;
-  ledState = false;
-  digitalWrite(LED, ledState);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("LED OFF");
   display.display();
 }
 
@@ -248,22 +240,24 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  unsigned long currentMillis = millis();
-  if(currentMillis - previousMillis >= interval)
-  {
-    previousMillis = currentMillis;
+  static unsigned long lastToggle = 0;
+  static bool ledState = false;
+  unsigned long now = millis();
+  if(now - lastToggle >= 2000) {
+    lastToggle = now;
     ledState = !ledState;
-    digitalWrite(LED, ledState);
-    display.clearDisplay();
-    display.setCursor(0,0);
-    if(ledState)
-    {
+    if(ledState) {
+      digitalWrite(LED,HIGH);
+      display.clearDisplay();
+      display.setCursor(0,0);
       display.print("LED ON");
-    }
-    else
-    {
+      display.display();
+    } else {
+      digitalWrite(LED,LOW);
+      display.clearDisplay();
+      display.setCursor(0,0);
       display.print("LED OFF");
+      display.display();
     }
-    display.display();
   }
 }
