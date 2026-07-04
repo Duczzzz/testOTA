@@ -1,23 +1,3 @@
-// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
-// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
-// + thư viện Adafruit NeoPixel by Adafruit
-// + thư viện Firebase ESP32 Client by Mobizt
-// + thư viện Adafruit GFX libraray by Adafruit
-// + thư viện Adafruit SSD1306 by Adafruit
-// Tác giả MinhDuc
-// 07/03/2026
-// Led RGB chân 9
-// BME280 SDA chân 8
-// BME280 SCL chân 18
-// Oled tft SDA chân 13
-// Oled tft SCL chân 12
-// DHT chân 11
-// Điều khiển driver động cơ chân 16 và 15
-// Các nút nhấn hoạt động tích cực mức thấp 
-// Nút nhấn SW8 kết nối chân GPIO10
-// Nút nhấn SW9 kết nối chân GPIO12 
-// Nút nhấn SW11 kết nối chân GPIO14
-// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -30,8 +10,8 @@
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Su Ni";
+const char* pass = "04072009";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -62,9 +42,6 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
-
-float temp, hum, CBND, CBDA, lasttemp, lasthum;
-
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -91,7 +68,8 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%\n", percent);
+              Serial.printf("OTA %d%%
+", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -179,8 +157,6 @@ void setup() {
     led.show();
     while (1);
   }
-  lasttemp = bme.readTemperature();
-  lasthum = bme.readHumidity();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
@@ -215,7 +191,9 @@ void setup() {
     delay(300);
   }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  Serial.printf("Firebase Client v%s
+
+", FIREBASE_CLIENT_VERSION);
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
   Firebase.reconnectWiFi(true);
@@ -225,13 +203,8 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Hiển thị thông báo khởi tạo cảm biến
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("BME280 Ready");
-  display.display();
+  // Đặt màu LED ban đầu và hiển thị trên OLED
+  uint32_t currentColor = led.Color(255,0,0); led.setPixelColor(0,currentColor); led.show(); display.setCursor(0,0); display.print("Mau: Red"); display.display();
 }
 
 void loop() {
@@ -247,57 +220,5 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  if(Firebase.getFloat(fbdo,"/users/duc/bme280/CBNDBME280")) CBND = fbdo.floatData();
-  if(Firebase.getFloat(fbdo,"/users/duc/bme280/CBDABME280")) CBDA = fbdo.floatData();
-
-  hum = bme.readHumidity();
-  temp = bme.readTemperature();
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-
-  display.setCursor(20, 0);
-  display.print("CAM BIEN BME280");
-
-  Serial.printf("BME280: Nhiet do: %f, Do am: %f\n", temp, hum);
-
-  display.setCursor(0, 20);
-  display.printf("ND:%.2f", temp);
-
-  display.setCursor(55, 20);
-  display.printf("DA:%.2f", hum);
-
-  display.setCursor(0, 30);
-  display.printf("CBND:%.1f", CBND);
-
-  display.setCursor(65, 30);
-  display.printf("CBDA:%.1f", CBDA);
-
-  if(temp > CBND || hum > CBDA) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    Firebase.setInt(fbdo,"/users/duc/bme280/ledbme280",1);
-    display.setCursor(0, 40);
-    display.print("Den canh bao: Bat");
-  }
-  else {
-    led.setPixelColor(0, led.Color(0, 255, 0));
-    Firebase.setInt(fbdo,"/users/duc/bme280/ledbme280",0);
-    display.setCursor(0, 40);
-    display.print("Den canh bao: Tat");
-  }
-
-  if(temp != lasttemp) {
-    Firebase.setFloat(fbdo,"/users/duc/bme280/Temp",temp);
-    lasttemp = temp;
-  }
-
-  if(hum != lasthum) {
-    Firebase.setFloat(fbdo,"/users/duc/bme280/Humi",hum);
-    lasthum = hum;
-  }
-
-  led.show();
-  display.display();
-  delay(2000);
+  static uint8_t colorState = 0; colorState = (colorState + 1) % 3; uint32_t currentColor; display.clearDisplay(); if(colorState == 0){currentColor = led.Color(255,0,0); display.print("Mau: Red");} else if(colorState == 1){currentColor = led.Color(0,255,0); display.print("Mau: Green");} else {currentColor = led.Color(0,0,255); display.print("Mau: Blue");} led.setPixelColor(0,currentColor); led.show(); display.display(); delay(1000);
 }
