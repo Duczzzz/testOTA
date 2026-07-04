@@ -1,3 +1,23 @@
+// Đây là source trống cho người dùng tự build trên board do Nuke Dashboard phát triển
+// Để có thể sử dụng source code này bạn cần cài danh sách các thư viện sau: 
+// + thư viện Adafruit NeoPixel by Adafruit
+// + thư viện Firebase ESP32 Client by Mobizt
+// + thư viện Adafruit GFX libraray by Adafruit
+// + thư viện Adafruit SSD1306 by Adafruit
+// Tác giả MinhDuc
+// 07/03/2026
+// Led RGB chân 9
+// BME280 SDA chân 8
+// BME280 SCL chân 18
+// Oled tft SDA chân 13
+// Oled tft SCL chân 12
+// DHT chân 11
+// Điều khiển driver động cơ chân 16 và 15
+// Các nút nhấn hoạt động tích cực mức thấp 
+// Nút nhấn SW8 kết nối chân GPIO10
+// Nút nhấn SW9 kết nối chân GPIO12 
+// Nút nhấn SW11 kết nối chân GPIO14
+// Động cơ servo kết nối chân GPIO17
 #include <Wire.h>
 #include <FirebaseESP32.h>
 #include <WiFi.h>
@@ -10,8 +30,8 @@
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
 
-const char* ssid = "Su Ni";
-const char* pass = "04072009";
+const char* ssid = "DUC";
+const char* pass = "14042004";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -42,6 +62,9 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+float temp, hum, CBND, CBDA, lasttemp, lasthum;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -125,12 +148,6 @@ void setup() {
   /*
     Người dùng build code tại đây
   */
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Bat dau doc BME280");
-  display.display();
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -162,6 +179,8 @@ void setup() {
     led.show();
     while (1);
   }
+  lasttemp = bme.readTemperature();
+  lasthum = bme.readHumidity();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
@@ -206,6 +225,13 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
+  // Hiển thị thông báo khởi tạo cảm biến
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.print("BME280 Ready");
+  display.display();
 }
 
 void loop() {
@@ -221,20 +247,57 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temp = bme.readTemperature();
-  float hum = bme.readHumidity();
+  if(Firebase.getFloat(fbdo,"/users/duc/bme280/CBNDBME280")) CBND = fbdo.floatData();
+  if(Firebase.getFloat(fbdo,"/users/duc/bme280/CBDABME280")) CBDA = fbdo.floatData();
+
+  hum = bme.readHumidity();
+  temp = bme.readTemperature();
+
   display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Nhiet do: ");
-  display.print(temp);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
-  display.print("Do am: ");
-  display.print(hum);
-  display.print("%");
-  display.display();
-  if(temp>36){led.setPixelColor(0,led.Color(255,0,0));}else{led.setPixelColor(0,led.Color(0,255,0));}
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  display.setCursor(20, 0);
+  display.print("CAM BIEN BME280");
+
+  Serial.printf("BME280: Nhiet do: %f, Do am: %f\n", temp, hum);
+
+  display.setCursor(0, 20);
+  display.printf("ND:%.2f", temp);
+
+  display.setCursor(55, 20);
+  display.printf("DA:%.2f", hum);
+
+  display.setCursor(0, 30);
+  display.printf("CBND:%.1f", CBND);
+
+  display.setCursor(65, 30);
+  display.printf("CBDA:%.1f", CBDA);
+
+  if(temp > CBND || hum > CBDA) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    Firebase.setInt(fbdo,"/users/duc/bme280/ledbme280",1);
+    display.setCursor(0, 40);
+    display.print("Den canh bao: Bat");
+  }
+  else {
+    led.setPixelColor(0, led.Color(0, 255, 0));
+    Firebase.setInt(fbdo,"/users/duc/bme280/ledbme280",0);
+    display.setCursor(0, 40);
+    display.print("Den canh bao: Tat");
+  }
+
+  if(temp != lasttemp) {
+    Firebase.setFloat(fbdo,"/users/duc/bme280/Temp",temp);
+    lasttemp = temp;
+  }
+
+  if(hum != lasthum) {
+    Firebase.setFloat(fbdo,"/users/duc/bme280/Humi",hum);
+    lasthum = hum;
+  }
+
   led.show();
+  display.display();
   delay(2000);
 }
