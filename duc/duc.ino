@@ -42,6 +42,12 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+const uint32_t colors[] = {led.Color(255,0,0),led.Color(0,255,0),led.Color(0,0,255),led.Color(255,255,0),led.Color(0,255,255),led.Color(255,0,255),led.Color(255,255,255)};
+const char* colorNames[] = {"Red","Green","Blue","Yellow","Cyan","Magenta","White"};
+int colorIdx = 0;
+unsigned long lastChange = 0;
+const unsigned long interval = 2000;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -68,8 +74,7 @@ void getupdate()
           Update.onProgress([](size_t current, size_t total) {
               int percent = (current * 100) / total;
 
-              Serial.printf("OTA %d%%
-", percent);
+              Serial.printf("OTA %d%%\n", percent);
 
               display.clearDisplay();
               display.setCursor(0,0);
@@ -128,97 +133,29 @@ void setup() {
   */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
-  led.begin();
-  led.setBrightness(50);
-  led.setPixelColor(0, led.Color(255, 0, 255));
-  led.show();  
-  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) {
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    Serial.println("OLED fail!");
-    while (1);
-  }
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
-  myservo.setPeriodHertz(50);
-  myservo.attach(servoPin, 1000, 2000);
-  display.clearDisplay();
-  display.setCursor(25, 30);
-  display.print("NUKEDASHBOARD");
-  if (!bme.begin(0x76,&I2C_BME)) {
-    display.clearDisplay();
-    Serial.println("Không tìm thấy BME280!");
-    display.setCursor(0, 0);
-    display.printf("Khong tim thay BME280!");
-    display.display();
-    led.setPixelColor(0, led.Color(255, 0, 0));
-    led.show();
-    while (1);
-  }
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.display();
-  delay(1000);
-  pinMode(LED,OUTPUT);
-  digitalWrite(LED,0);
-  Serial.begin(115200);
-  Serial.println("He thong dang khoi dong...");
-  display.display();
-  display.clearDisplay();
+  led.begin(); led.setBrightness(50); led.setPixelColor(0, colors[colorIdx]); led.show(); 
+  if (!display.begin(SSD1306_SWITCHCAPVCC, i2c_Address)) { led.setPixelColor(0, led.Color(255, 0, 0)); led.show(); Serial.println("OLED fail!"); while (1); }
+  ESP32PWM::allocateTimer(0); ESP32PWM::allocateTimer(1); ESP32PWM::allocateTimer(2); ESP32PWM::allocateTimer(3);
+  myservo.setPeriodHertz(50); myservo.attach(servoPin, 1000, 2000);
+  display.clearDisplay(); display.setCursor(25, 30); display.print("NUKEDASHBOARD");
+  if (!bme.begin(0x76,&I2C_BME)) { display.clearDisplay(); Serial.println("Không tìm thấy BME280!"); display.setCursor(0, 0); display.printf("Khong tim thay BME280!"); display.display(); led.setPixelColor(0, led.Color(255, 0, 0)); led.show(); while (1); }
+  display.setTextSize(1); display.setTextColor(SSD1306_WHITE); display.display(); delay(1000);
+  pinMode(LED,OUTPUT); digitalWrite(LED,0);
+  Serial.begin(115200); Serial.println("He thong dang khoi dong..."); display.display(); display.clearDisplay();
   WiFi.begin(ssid,pass);
-  while (WiFi.status() != WL_CONNECTED) {
-    led.setPixelColor(0, led.Color(255, 0, 255));
-    led.show();
-    Serial.println("dang khoi dong WiFi...");
-    display.setCursor(10,0);
-    display.print("Dang ket noi WiFi");
-    display.setCursor(0,20);
-    display.printf("SSID: %s",ssid);
-    if(demwf < 80) {
-      display.setCursor(demwf,30);
-      display.print(".");
-      Serial.println(".");
-    }
-    else if(demwf > 80) {
-      display.clearDisplay();
-      demwf = 0;
-    }
-    demwf+=5;
-    display.display();
-    digitalWrite(LED,1);
-    delay(300);
-  }
+  while (WiFi.status() != WL_CONNECTED) { led.setPixelColor(0, led.Color(255, 0, 255)); led.show(); Serial.println("dang khoi dong WiFi..."); display.setCursor(10,0); display.print("Dang ket noi WiFi"); display.setCursor(0,20); display.printf("SSID: %s",ssid); if(demwf < 80) { display.setCursor(demwf,30); display.print("."); Serial.println("."); } else if(demwf > 80) { display.clearDisplay(); demwf = 0; } demwf+=5; display.display(); digitalWrite(LED,1); delay(300); }
   digitalWrite(LED,0);
-  Serial.printf("Firebase Client v%s
-
-", FIREBASE_CLIENT_VERSION);
-  config.database_url = DATABASE_URL;
-  config.signer.tokens.legacy_token = DATABASE_SECRET;
-  Firebase.reconnectWiFi(true);
-  fbdo.setBSSLBufferSize(512, 512);
-  Firebase.begin(&config, &auth);
-  led.setPixelColor(0, led.Color(0, 255, 0));
-  led.show();
-  display.clearDisplay();
-  display.display();
-  // Đặt màu LED ban đầu và hiển thị trên OLED
-  uint32_t currentColor = led.Color(255,0,0); led.setPixelColor(0,currentColor); led.show(); display.setCursor(0,0); display.print("Mau: Red"); display.display();
+  Serial.printf("Firebase Client v%s\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL; config.signer.tokens.legacy_token = DATABASE_SECRET; Firebase.reconnectWiFi(true); fbdo.setBSSLBufferSize(512, 512); Firebase.begin(&config, &auth);
+  led.setPixelColor(0, led.Color(0, 255, 0)); led.show(); display.clearDisplay(); display.display();
+  display.clearDisplay(); display.setCursor(0,0); display.print("Mau hien tai: "); display.print(colorNames[colorIdx]); display.display();
 }
 
 void loop() {
   if(Firebase.getInt(fbdo, "/users/duc/updateOTA")) checkupdate = fbdo.intData();
-  if(checkupdate == 1) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print("UPDATE OTA");
-    display.display();
-    getupdate();
-  }
+  if(checkupdate == 1) { display.clearDisplay(); display.setTextSize(1); display.setCursor(0, 0); display.print("UPDATE OTA"); display.display(); getupdate(); }
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  static uint8_t colorState = 0; colorState = (colorState + 1) % 3; uint32_t currentColor; display.clearDisplay(); if(colorState == 0){currentColor = led.Color(255,0,0); display.print("Mau: Red");} else if(colorState == 1){currentColor = led.Color(0,255,0); display.print("Mau: Green");} else {currentColor = led.Color(0,0,255); display.print("Mau: Blue");} led.setPixelColor(0,currentColor); led.show(); display.display(); delay(1000);
+  if(millis() - lastChange >= interval) { lastChange = millis(); colorIdx = (colorIdx + 1) % (sizeof(colors)/sizeof(colors[0])); led.setPixelColor(0, colors[colorIdx]); led.show(); display.clearDisplay(); display.setCursor(0,0); display.print("Mau hien tai: "); display.print(colorNames[colorIdx]); display.display(); }
 }
