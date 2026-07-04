@@ -30,8 +30,8 @@
 #include <Adafruit_BME280.h>
 #include <ESP32Servo.h>
 
-const char* ssid = "DUC";
-const char* pass = "14042004";
+const char* ssid = "Su Ni";
+const char* pass = "04072009";
 #define LED_COUNT 1
 #define LED_RGB 9
 Adafruit_NeoPixel led(LED_COUNT, LED_RGB, NEO_GRB + NEO_KHZ800);
@@ -142,7 +142,9 @@ void getupdate()
 }
 
 void setup() {
-  // Người dùng build code tại đây
+  /*
+    Người dùng build code tại đây
+  */
   I2C_BME.begin(8,18);
   I2C_OLED.begin(13,12);
   led.begin();
@@ -218,24 +220,6 @@ void setup() {
   led.show();
   display.clearDisplay();
   display.display();
-  // Đọc nhiệt độ và độ ẩm lần đầu, hiển thị và thiết lập màu LED
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
-  display.print("Hum: ");
-  display.print(humidity);
-  display.print("%");
-  display.display();
-  if(temperature>36){led.setPixelColor(0,led.Color(255,0,0));}else{led.setPixelColor(0,led.Color(0,255,0));}
-  led.show();
 }
 
 void loop() {
@@ -248,21 +232,8 @@ void loop() {
     display.display();
     getupdate();
   }
-  // Xây dựng cơ chế xử lý của bạn tại đây
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
-  display.print("Hum: ");
-  display.print(humidity);
-  display.print("%");
-  display.display();
-  if(temperature>36){led.setPixelColor(0,led.Color(255,0,0));}else{led.setPixelColor(0,led.Color(0,255,0));}
-  led.show();
-  delay(2000);
+  /*
+    Xây dựng cơ chế xử lý của bạn tại đây
+  */
+  float temperature = bme.readTemperature(); float humidity = bme.readHumidity(); display.clearDisplay(); display.setTextSize(1); display.setCursor(0,0); display.print("Temp: "); display.print(temperature); display.print((char)176); display.print("C"); display.setCursor(0,10); display.print("Hum: "); display.print(humidity); display.print("%"); display.display(); if(temperature>36){ led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); } led.show(); delay(1000);
 }
