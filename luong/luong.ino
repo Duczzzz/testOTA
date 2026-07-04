@@ -62,6 +62,9 @@ FirebaseConfig config;
 
 int checkupdate = 0;
 int demwf = 0;
+
+float temp, hum, CBND, CBDA, lasttemp, lasthum;
+
 void getupdate()
 {
     display.setTextColor(SSD1306_WHITE);
@@ -176,6 +179,8 @@ void setup() {
     led.show();
     while (1);
   }
+  lasttemp = bme.readTemperature();
+  lasthum = bme.readHumidity();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.display();
@@ -242,22 +247,57 @@ void loop() {
   /*
     Xây dựng cơ chế xử lý của bạn tại đây
   */
-  float temperature = bme.readTemperature();
-  float humidity = bme.readHumidity();
+  if(Firebase.getFloat(fbdo,"/users/luong/bme280/CBNDBME280")) CBND = fbdo.floatData();
+  if(Firebase.getFloat(fbdo,"/users/luong/bme280/CBDABME280")) CBDA = fbdo.floatData();
+
+  hum = bme.readHumidity();
+  temp = bme.readTemperature();
+
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.print((char)176);
-  display.print("C");
-  display.setCursor(0,10);
-  display.print("Hum:  ");
-  display.print(humidity);
-  display.print("%");
-  display.display();
-  if(temperature>36) { led.setPixelColor(0, led.Color(255,0,0)); } else { led.setPixelColor(0, led.Color(0,255,0)); }
+
+  display.setCursor(20, 0);
+  display.print("CAM BIEN BME280");
+
+  Serial.printf("BME280: Nhiet do: %f, Do am: %f\n", temp, hum);
+
+  display.setCursor(0, 20);
+  display.printf("ND:%.2f", temp);
+
+  display.setCursor(55, 20);
+  display.printf("DA:%.2f", hum);
+
+  display.setCursor(0, 30);
+  display.printf("CBND:%.1f", CBND);
+
+  display.setCursor(65, 30);
+  display.printf("CBDA:%.1f", CBDA);
+
+  if(temp > CBND || hum > CBDA) {
+    led.setPixelColor(0, led.Color(255, 0, 0));
+    Firebase.setInt(fbdo,"/users/luong/bme280/ledbme280",1);
+    display.setCursor(0, 40);
+    display.print("Den canh bao: Bat");
+  }
+  else {
+    led.setPixelColor(0, led.Color(0, 255, 0));
+    Firebase.setInt(fbdo,"/users/luong/bme280/ledbme280",0);
+    display.setCursor(0, 40);
+    display.print("Den canh bao: Tat");
+  }
+
+  if(temp != lasttemp) {
+    Firebase.setFloat(fbdo,"/users/luong/bme280/Temp",temp);
+    lasttemp = temp;
+  }
+
+  if(hum != lasthum) {
+    Firebase.setFloat(fbdo,"/users/luong/bme280/Humi",hum);
+    lasthum = hum;
+  }
+
   led.show();
+  display.display();
   delay(2000);
 }
